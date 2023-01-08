@@ -1,7 +1,9 @@
-console.log('Hello world!');
+import api from './api';
+import { Globals } from './types';
 
-const something = 'some string';
-const state = {};
+const globals: Globals = {
+  state: { disconnected: false },
+};
 
 const init_signal_listeners = async () => {
   process.on('SIGTERM', async () => {
@@ -23,10 +25,14 @@ const init = async () => {
   console.log('Initializing');
 
   await init_signal_listeners();
+  await api.init(globals);
 };
 
 const term = async () => {
   console.log('Terminating');
+
+  await api.term();
+  process.exit();
 };
 
 (async () => {
