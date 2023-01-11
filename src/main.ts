@@ -1,4 +1,6 @@
 import api from './api';
+import api2 from './api2';
+import gpio from './lib/gpio';
 import { Globals } from './types';
 
 const globals: Globals = {
@@ -26,12 +28,15 @@ const init = async () => {
 
   await init_signal_listeners();
   await api.init(globals);
+  await api2.init(globals);
+  await gpio.init(globals);
 };
 
 const term = async () => {
   console.log('Terminating');
 
   await api.term();
+  await gpio.term();
   process.exit();
 };
 
