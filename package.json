@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npx tsc",
     "start": "npm run build && node build/main.js",
-    "start:dev": "npx nodemon",
+    "start:dev": "LOG_LEVEL=info npx nodemon",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint . --ext .ts"
   },

@@ -1,7 +1,7 @@
 import Logger from './lib/log';
 import api from './api';
-import gpio from './lib/gpio';
-import { Globals } from './types';
+import power from './lib/power';
+import { Globals, PowerState } from './types';
 
 const log = Logger.get('main');
 
@@ -30,14 +30,17 @@ const init = async () => {
 
   await init_signal_listeners();
   await api.init(globals);
-  await gpio.init();
+  await power.init();
+
+  power.emit('power', PowerState.On);
 };
 
 const term = async () => {
   log.notice('Terminating');
 
+  power.emit('power', PowerState.Off);
   await api.term();
-  await gpio.term();
+  await power.term();
   process.exit();
 };
 
