@@ -1,7 +1,9 @@
+import Logger from './lib/log';
 import api from './api';
-import api2 from './api2';
 import gpio from './lib/gpio';
 import { Globals } from './types';
+
+const log = Logger.get('main');
 
 const globals: Globals = {
   state: { disconnected: false },
@@ -9,31 +11,30 @@ const globals: Globals = {
 
 const init_signal_listeners = async () => {
   process.on('SIGTERM', async () => {
-    console.log('Caught SIGTERM');
+    log.warn('Caught SIGTERM');
     await term();
   });
 
   process.on('SIGINT', async () => {
-    console.log('Caught SIGINT');
+    log.warn('Caught SIGINT');
     await term();
   });
 
   process.on('exit', () => {
-    console.log('Exiting');
+    log.warn('Exiting');
   });
 };
 
 const init = async () => {
-  console.log('Initializing');
+  log.notice('Initializing');
 
   await init_signal_listeners();
   await api.init(globals);
-  await api2.init(globals);
-  await gpio.init(globals);
+  await gpio.init();
 };
 
 const term = async () => {
-  console.log('Terminating');
+  log.notice('Terminating');
 
   await api.term();
   await gpio.term();

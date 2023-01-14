@@ -1,9 +1,11 @@
 import Koa from 'koa';
 import Router from 'koa-router';
 import json from 'koa-json';
+import Logger from '../lib/log';
 import { Globals } from '../types';
 import { config } from '../config';
 
+const log = Logger.get('api');
 const app = new Koa();
 const router = new Router();
 let globals: Globals;
@@ -19,15 +21,15 @@ const init = async (g: Globals) => {
 
   app.use(router.routes()).use(router.allowedMethods());
 
-  const port = config.port;
+  const port = config.api.port;
   app.listen(port, () => {
-    console.log(`API server started on port ${port}`);
+    log.notice(`API server started on port ${port}`);
   });
 };
 
 const term = async () => {
   // TODO shut down koa
-  console.log('Shutting down API server');
+  log.notice('Shutting down API server');
 };
 
 export default {
