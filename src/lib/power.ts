@@ -5,17 +5,15 @@ import { CustomEmitter, PowerState } from '../types';
 class PowerEmitter extends CustomEmitter<{ power: PowerState; light: PowerState }> {}
 
 const log = Logger.get('power');
-const powerEmitter = new PowerEmitter();
+const powerEmitter = new PowerEmitter('power');
 
 powerEmitter.on('power', async (state) => {
   switch (state) {
     case PowerState.On:
-      log.info('event: power on');
       await gpio.power.on();
       break;
 
     case PowerState.Off:
-      log.info('event: power off');
       await gpio.light.off();
       await gpio.power.off();
       break;
@@ -30,12 +28,10 @@ powerEmitter.on('power', async (state) => {
 powerEmitter.on('light', async (state) => {
   switch (state) {
     case PowerState.On:
-      log.info('event: light on');
       await gpio.light.on();
       break;
 
     case PowerState.Off:
-      log.info('event: light off');
       await gpio.light.off();
       break;
 

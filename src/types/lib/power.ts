@@ -1,5 +1,5 @@
 export enum PowerState {
-  On,
-  Off,
-  Toggle,
+  On = 'on',
+  Off = 'off',
+  Toggle = 'toggle',
 }
