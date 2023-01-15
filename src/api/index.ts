@@ -4,7 +4,8 @@ import Logger from '../lib/log';
 import { config } from '../config';
 import router from './routes';
 
-const log = Logger.get('api');
+const namespace = 'api';
+const log = Logger.get(namespace);
 const app = new Koa();
 const port = config.api.port;
 app.use(json());
