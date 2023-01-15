@@ -25,7 +25,9 @@ const term = async () => {
 };
 
 const power = {
-  on: async () => rpi_gpio?.power.write(Gpio.HIGH),
+  on: async () => {
+    rpi_gpio?.power.write(Gpio.HIGH);
+  },
   off: async () => rpi_gpio?.power.write(Gpio.LOW),
 };
 

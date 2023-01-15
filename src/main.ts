@@ -1,13 +1,10 @@
 import Logger from './lib/log';
 import api from './api';
 import power from './lib/power';
-import { Globals, PowerState } from './types';
+import { PowerState } from './types';
 
-const log = Logger.get('main');
-
-const globals: Globals = {
-  state: { disconnected: false },
-};
+const namespace = 'main';
+const log = Logger.get(namespace);
 
 const init_signal_listeners = async () => {
   process.on('SIGTERM', async () => {
@@ -29,16 +26,16 @@ const init = async () => {
   log.notice('Initializing');
 
   await init_signal_listeners();
-  await api.init(globals);
+  await api.init();
   await power.init();
 
-  power.emit('power', PowerState.On);
+  power.emit(namespace, 'power', PowerState.On);
 };
 
 const term = async () => {
   log.notice('Terminating');
 
-  power.emit('power', PowerState.Off);
+  power.emit(namespace, 'power', PowerState.Off);
   await api.term();
   await power.term();
   process.exit();

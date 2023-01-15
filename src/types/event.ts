@@ -9,9 +9,9 @@ type EventKey<T extends EventMap> = string & keyof T;
 type EventReceiver<T> = (params: T) => void;
 
 interface Emitter<T extends EventMap> {
-  on<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
-  off<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>): void;
-  emit<K extends EventKey<T>>(eventName: K, params: T[K]): void;
+  on<K extends EventKey<T>>(sourceNamespace: string, eventName: K, fn: EventReceiver<T[K]>): void;
+  off<K extends EventKey<T>>(sourceNamespace: string, eventName: K, fn: EventReceiver<T[K]>): void;
+  emit<K extends EventKey<T>>(sourceNamespace: string, eventName: K, params: T[K]): void;
 }
 
 export class CustomEmitter<T extends EventMap> implements Emitter<T> {
@@ -22,22 +22,22 @@ export class CustomEmitter<T extends EventMap> implements Emitter<T> {
     this.log = Logger.get(`${parentNamespace}:event`);
   }
 
-  on<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>) {
-    this.emitter.on(eventName, (params: T) => {
-      this.log.debug('on event:%s data:%O', eventName, params);
-      fn;
+  on<K extends EventKey<T>>(sourceNamespace: string, eventName: K, fn: EventReceiver<T[K]>) {
+    this.emitter.on(eventName, (params: T[K]) => {
+      this.log.debug('%s on event:%s data:%O', sourceNamespace, eventName, params);
+      fn(params);
     });
   }
 
-  off<K extends EventKey<T>>(eventName: K, fn: EventReceiver<T[K]>) {
-    this.emitter.off(eventName, (params: T) => {
-      this.log.debug('off event:%s data:%O', eventName, params);
-      fn;
+  off<K extends EventKey<T>>(sourceNamespace: string, eventName: K, fn: EventReceiver<T[K]>) {
+    this.emitter.off(eventName, (params: T[K]) => {
+      this.log.debug('%s off event:%s data:%O', sourceNamespace, eventName, params);
+      fn(params);
     });
   }
 
-  emit<K extends EventKey<T>>(eventName: K, params: T[K]) {
-    this.log.debug('emit event:%s data:%O', eventName, params);
+  emit<K extends EventKey<T>>(sourceNamespace: string, eventName: K, params: T[K]) {
+    this.log.debug('%s emit event:%s data:%O', sourceNamespace, eventName, params);
     this.emitter.emit(eventName, params);
   }
 }

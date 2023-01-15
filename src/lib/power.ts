@@ -4,10 +4,11 @@ import { CustomEmitter, PowerState } from '../types';
 
 class PowerEmitter extends CustomEmitter<{ power: PowerState; light: PowerState }> {}
 
-const log = Logger.get('power');
-const powerEmitter = new PowerEmitter('power');
+const namespace = 'power';
+const log = Logger.get(namespace);
+const powerEmitter = new PowerEmitter(namespace);
 
-powerEmitter.on('power', async (state) => {
+powerEmitter.on(namespace, 'power', async (state) => {
   switch (state) {
     case PowerState.On:
       await gpio.power.on();
@@ -25,7 +26,7 @@ powerEmitter.on('power', async (state) => {
   }
 });
 
-powerEmitter.on('light', async (state) => {
+powerEmitter.on(namespace, 'light', async (state) => {
   switch (state) {
     case PowerState.On:
       await gpio.light.on();
