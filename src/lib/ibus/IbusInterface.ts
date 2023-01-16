@@ -29,8 +29,8 @@ export class IbusInterface extends EventEmitter {
   }
 
   startup() {
-    // // eslint-disable-next-line @typescript-eslint/no-this-alias
-    // const instance = this;
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const instance = this;
     const path = this.devicePath;
     this.serialPort = new SerialPort({
       path,
@@ -51,15 +51,15 @@ export class IbusInterface extends EventEmitter {
 
     const onSerialPortData = (data: any) => {
       log.debug('[IbusInterface] Data: %O', data);
-      this.lastActivityTime = process.hrtime();
+      instance.lastActivityTime = process.hrtime();
     };
-    this.serialPort.on('data', onSerialPortData.bind(this));
+    this.serialPort.on('data', onSerialPortData);
 
     const onSerialPortError = (err: any) => {
       log.error('[IbusInterface] Error', err);
-      this.shutdown(this.startup);
+      instance.shutdown(this.startup);
     };
-    this.serialPort.on('error', onSerialPortError.bind(this));
+    this.serialPort.on('error', onSerialPortError);
 
     // this.serialPort.on('data', function (data) {
     //   log.debug('[IbusInterface] Data on port: ', data);
@@ -76,10 +76,14 @@ export class IbusInterface extends EventEmitter {
 
     this.serialPort.pipe(this.parser);
 
-    this.watchForEmptyBus(this.processWriteQueue.bind(this));
+    this.watchForEmptyBus(() => {
+      this.processWriteQueue(() => {
+        //});
+      });
+    });
   }
 
-  private getHrDiffTime(time: [number, number]) {
+  getHrDiffTime(time: [number, number]) {
     // ts = [seconds, nanoseconds]
     const ts = process.hrtime(time);
     // convert seconds to miliseconds and nanoseconds to miliseconds as well
@@ -89,17 +93,27 @@ export class IbusInterface extends EventEmitter {
   private watchForEmptyBus(workerFn: any) {
     if (this.getHrDiffTime(this.lastActivityTime) >= 20) {
       workerFn(() => {
+        // const watchForEmptyBus = () => {
+        //   this.watchForEmptyBus(workerFn);
+        // };
         // operation is ready, resume looking for an empty bus
-        setImmediate(this.watchForEmptyBus, workerFn);
+        // setImmediate(this.watchForEmptyBus, workerFn);
+        setImmediate(() => {
+          this.watchForEmptyBus(workerFn);
+        });
       });
     } else {
       // keep looking for an empty Bus
-      setImmediate(this.watchForEmptyBus, workerFn);
+      // setImmediate(this.watchForEmptyBus, workerFn);
+      setImmediate(() => this.watchForEmptyBus(workerFn));
     }
   }
 
   private processWriteQueue(ready: any) {
     // noop on empty queue
+    if (this === undefined) {
+      log.error('THIS IS UNDEFINED');
+    }
     if (this.queue.length <= 0) {
       ready();
       return;
