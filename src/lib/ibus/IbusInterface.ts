@@ -29,8 +29,6 @@ export class IbusInterface extends EventEmitter {
   }
 
   startup() {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const instance = this;
     const path = this.devicePath;
     this.serialPort = new SerialPort({
       path,
@@ -49,27 +47,15 @@ export class IbusInterface extends EventEmitter {
       }
     });
 
-    const onSerialPortData = (data: any) => {
+    this.serialPort.on('data', (data: any) => {
       log.debug('[IbusInterface] Data: %O', data);
-      instance.lastActivityTime = process.hrtime();
-    };
-    this.serialPort.on('data', onSerialPortData);
+      this.lastActivityTime = process.hrtime();
+    });
 
-    const onSerialPortError = (err: any) => {
+    this.serialPort.on('error', (err: any) => {
       log.error('[IbusInterface] Error', err);
-      instance.shutdown(this.startup);
-    };
-    this.serialPort.on('error', onSerialPortError);
-
-    // this.serialPort.on('data', function (data) {
-    //   log.debug('[IbusInterface] Data on port: ', data);
-    //   instance.lastActivityTime = process.hrtime();
-    // });
-
-    // this.serialPort.on('error', function (err) {
-    //   log.error('[IbusInterface] Error', err);
-    //   instance.shutdown(instance.startup);
-    // });
+      this.shutdown(this.startup);
+    });
 
     this.parser = new IbusProtocol();
     this.parser.on('message', this.onMessage);
@@ -78,7 +64,7 @@ export class IbusInterface extends EventEmitter {
 
     this.watchForEmptyBus(() => {
       this.processWriteQueue(() => {
-        //});
+        /* noop */
       });
     });
   }
@@ -93,9 +79,6 @@ export class IbusInterface extends EventEmitter {
   private watchForEmptyBus(workerFn: any) {
     if (this.getHrDiffTime(this.lastActivityTime) >= 20) {
       workerFn(() => {
-        // const watchForEmptyBus = () => {
-        //   this.watchForEmptyBus(workerFn);
-        // };
         // operation is ready, resume looking for an empty bus
         // setImmediate(this.watchForEmptyBus, workerFn);
         setImmediate(() => {
