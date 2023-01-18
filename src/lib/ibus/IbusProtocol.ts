@@ -1,5 +1,11 @@
-import { Transform, TransformCallback } from 'stream';
+/*
+From https://github.com/osvathrobi/node-ibus
+Added here to support updated 'serialport' versions
+Also rudimentary conversion to typescript
+*/
+
 import Logger from 'log';
+import { Transform, TransformCallback } from 'stream';
 import { FullIbusMessage, IbusMessage } from '../../types/ibus';
 
 const namespace = 'ibus-protocol';

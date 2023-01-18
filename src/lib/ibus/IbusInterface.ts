@@ -1,19 +1,19 @@
 /*
 From https://github.com/osvathrobi/node-ibus
 Added here to support updated 'serialport' versions
-Also rudimentary conversion to a class and typescript
+Also rudimentary conversion to typescript
 */
 
-import { SerialPort } from 'serialport';
-import { EventEmitter } from 'stream';
-import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
 import Logger from 'log';
+import { SerialPort } from 'serialport';
+import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
 import { FullIbusMessage, IbusMessage } from '../../types/ibus';
+import { CustomEmitter } from '../../types';
 
 const namespace = 'ibus-bus';
 const log = Logger.get(namespace);
 
-export class IbusInterface extends EventEmitter {
+export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   private devicePath: string;
   private lastActivityTime: [number, number];
   private queue: Buffer[];
@@ -21,7 +21,7 @@ export class IbusInterface extends EventEmitter {
   private parser: IbusProtocol | undefined;
 
   constructor(devicePath: string) {
-    super();
+    super(namespace);
 
     this.devicePath = devicePath;
     this.lastActivityTime = process.hrtime();
@@ -58,7 +58,9 @@ export class IbusInterface extends EventEmitter {
     });
 
     this.parser = new IbusProtocol();
-    this.parser.on('message', this.onMessage);
+    this.parser.on('message', (message) => {
+      this.onMessage(message);
+    });
 
     this.serialPort.pipe(this.parser);
 
@@ -124,23 +126,6 @@ export class IbusInterface extends EventEmitter {
       }
     };
     this.serialPort?.write(dataBuf, onSerialPortWrite);
-
-    // this.serialPort?.write(dataBuf, function (error, resp) {
-    //   if (error) {
-    //     log.error('[IbusInterface] Failed to write: ' + error);
-    //   } else {
-    //     log.info('[IbusInterface] ', clc.white('Wrote to Device: '), dataBuf, resp);
-
-    //     serialPort.drain(function (error) {
-    //       log.debug(clc.white('Data drained'));
-
-    //       // this counts as an activity, so mark it
-    //       lastActivityTime = process.hrtime();
-
-    //       ready();
-    //     });
-    //   }
-    // });
   }
 
   getInterface() {
@@ -186,7 +171,7 @@ export class IbusInterface extends EventEmitter {
       msg.crc
     );
 
-    this.emit('data', msg);
+    this.emit(namespace, 'data', msg);
   }
 
   sendMessage(msg: IbusMessage) {
