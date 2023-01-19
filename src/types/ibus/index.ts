@@ -1,3 +1,5 @@
+export * from './device';
+
 export type FullIbusMessage = IbusMessage & {
   id: number;
   len: string;
