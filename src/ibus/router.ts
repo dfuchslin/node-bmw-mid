@@ -5,7 +5,8 @@ import { MID } from './devices';
 
 const namespace = 'ibus-router';
 const log = Logger.get(namespace);
-const registeredDevices: Record<IbusDeviceId[keyof IbusDeviceId & number], Device> = {
+
+const registeredDevices: Record<number, Device> = {
   [MID.id]: MID,
 };
 

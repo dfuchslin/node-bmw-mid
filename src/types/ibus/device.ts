@@ -1,7 +1,6 @@
-/* from git@github.com:kmalinich/node-bmw-interface.git */
-
 import { FullIbusMessage } from '.';
 
+/* from git@github.com:kmalinich/node-bmw-interface.git */
 export enum IbusDeviceId {
   ABG = 0xa4, // Airbag
   AHL = 0x66, // Adaptive headlight unit
@@ -70,7 +69,7 @@ export enum IbusDeviceId {
 }
 
 export interface Device {
-  id: IbusDeviceId;
+  id: typeof IbusDeviceId[keyof typeof IbusDeviceId];
   init(): void;
   term(): void;
   parseMessage(message: FullIbusMessage): void;
