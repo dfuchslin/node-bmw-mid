@@ -49,7 +49,8 @@ const init = async () => {
 };
 
 const term = async () => {
-  log.notice('Shutting down power');
+  log.notice('Shutting down power in 3 seconds');
+  await new Promise((resolve) => setTimeout(resolve, 3000));
   await gpio.term();
 };
 

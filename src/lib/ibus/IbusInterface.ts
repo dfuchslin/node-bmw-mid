@@ -147,17 +147,6 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       }
     };
     this.serialPort?.close(onSerialPortClose);
-
-    // this.serialPort.close(function (error) {
-    //   if (error) {
-    //     log.error('[IbusInterface] Error closing port: ', error);
-    //     callback();
-    //   } else {
-    //     log.info('[IbusInterface] Port Closed [' + device + ']');
-    //     parser = null;
-    //     callback();
-    //   }
-    // });
   }
 
   private onMessage(msg: FullIbusMessage) {
@@ -176,7 +165,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
 
   sendMessage(msg: IbusMessage) {
     const dataBuf = createBufferFromIbusMessage(msg);
-    log.debug('[IbusInterface] Send message: ', dataBuf);
+    log.info('[IbusInterface] Send message: ', dataBuf);
 
     if (this.queue.length > 1000) {
       log.warning('[IbusInterface] Queue too large, dropping message..', dataBuf);

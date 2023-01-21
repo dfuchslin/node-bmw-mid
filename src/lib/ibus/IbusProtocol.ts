@@ -87,10 +87,10 @@ export class IbusProtocol extends Transform {
             messages.push({
               id: Date.now(),
               src: mSrc,
-              len: mLen.toString(16),
+              len: mLen,
               dst: mDst,
               msg: mMsg,
-              crc: mCrc.toString(16),
+              crc: mCrc,
             });
 
             // mark end of last message

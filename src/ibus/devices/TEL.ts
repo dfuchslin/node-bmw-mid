@@ -3,7 +3,7 @@ import { deviceStatus } from '../../lib/ibus/message';
 import Logger from '../../lib/log';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
 
-const id = IbusDeviceId.RAD;
+const id = IbusDeviceId.TEL;
 const namespace = IbusDeviceId[id].toLowerCase();
 const log = Logger.get(namespace);
 let ibusInterface: IbusInterface;
@@ -30,7 +30,7 @@ const parseMessage = (message: FullIbusMessage) => {
   }
 };
 
-export const RAD: Device = {
+export const TEL: Device = {
   id,
   init,
   term,

@@ -2,8 +2,8 @@ export * from './device';
 
 export type FullIbusMessage = IbusMessage & {
   id: number;
-  len: string;
-  crc: string;
+  len: number;
+  crc: number;
 };
 
 export type IbusMessage = {
@@ -11,3 +11,5 @@ export type IbusMessage = {
   dst: number;
   msg: Buffer;
 };
+
+export type byte = number;
