@@ -21,8 +21,7 @@ const parseMessage = (message: FullIbusMessage) => {
   switch (message.msg[0]) {
     case 0x01: {
       // Request device status
-      const msg = deviceStatus(id);
-      ibusInterface.sendMessage(msg);
+      ibusInterface.sendMessage(deviceStatus(id));
       break;
     }
     default:
@@ -36,3 +35,5 @@ export const MID: Device = {
   term,
   parseMessage,
 };
+
+// ✖ ibus-router unhandled src:MID dst:LOC msg:  �
