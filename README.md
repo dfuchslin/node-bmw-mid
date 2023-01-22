@@ -1,4 +1,5 @@
 # node-bmw-mid
 
-
-globals: https://bobbyhadz.com/blog/typescript-declare-global-variable
+When deploying:
+sudo adduser <username> gpio
+sudo adduser <username> dialout
