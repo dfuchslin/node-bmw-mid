@@ -78,7 +78,8 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
     if (this.getHrDiffTime(this.lastActivityTime) >= 20) {
       this.processWriteQueue();
     }
-    setImmediate(() => this.watchForEmptyBus());
+    setTimeout(() => this.watchForEmptyBus(), 1);
+    // setImmediate(() => this.watchForEmptyBus()); // setimmediate likes to use lots of cpu
   }
 
   private processWriteQueue() {
