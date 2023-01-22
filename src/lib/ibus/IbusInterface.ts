@@ -8,7 +8,7 @@ import Logger from 'log';
 import { SerialPort } from 'serialport';
 import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
 import { FullIbusMessage, IbusMessage } from '../../types/ibus';
-import { CustomEmitter } from '../../types';
+import { CustomEmitter, LogLevel } from '../../types';
 
 const namespace = 'ibus-bus';
 const log = Logger.get(namespace);
@@ -21,7 +21,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   private parser: IbusProtocol | undefined;
 
   constructor(devicePath: string) {
-    super(namespace);
+    super(namespace, LogLevel.DEBUG);
 
     this.devicePath = devicePath;
     this.lastActivityTime = process.hrtime();
@@ -64,74 +64,48 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
 
     this.serialPort.pipe(this.parser);
 
-    this.watchForEmptyBus(() => {
-      this.processWriteQueue(() => {
-        /* noop */
-      });
-    });
+    this.watchForEmptyBus();
   }
 
-  getHrDiffTime(time: [number, number]) {
+  private getHrDiffTime(time: [number, number]) {
     // ts = [seconds, nanoseconds]
     const ts = process.hrtime(time);
     // convert seconds to miliseconds and nanoseconds to miliseconds as well
     return ts[0] * 1000 + ts[1] / 1000000;
   }
 
-  private watchForEmptyBus(workerFn: any) {
-    console.log('** watchForEmptyBus **');
+  private watchForEmptyBus() {
     if (this.getHrDiffTime(this.lastActivityTime) >= 20) {
-      console.log('** watchForEmptyBus: lasttime >= 20 **');
-      workerFn(() => {
-        // operation is ready, resume looking for an empty bus
-        // setImmediate(this.watchForEmptyBus, workerFn);
-        console.log('** watchForEmptyBus: lasttime >= 20 before setimmediate **');
-        setImmediate(() => {
-          console.log('** watchForEmptyBus: lasttime >= 20 setimmediate **');
-          this.watchForEmptyBus(workerFn);
-        });
-      });
-    } else {
-      console.log('** watchForEmptyBus: immediate **');
-      // keep looking for an empty Bus
-      // setImmediate(this.watchForEmptyBus, workerFn);
-      setImmediate(() => {
-        console.log('** watchForEmptyBus: immediate setimmediate **');
-        this.watchForEmptyBus(workerFn);
-      });
+      this.processWriteQueue();
     }
+    setImmediate(() => this.watchForEmptyBus());
   }
 
-  private processWriteQueue(ready: any) {
-    console.log('** processWriteQueue **');
+  private processWriteQueue() {
     // noop on empty queue
     if (this === undefined) {
       log.error('THIS IS UNDEFINED');
     }
     if (this.queue.length <= 0) {
-      console.log('** processWriteQueue queue length <= 0 return **');
-      ready();
       return;
     }
 
     // process 1 message
     const dataBuf = this.queue.pop();
 
-    log.info('[IbusInterface] Write queue length: %d', this.queue.length);
+    log.debug('[IbusInterface] Write queue length: %d', this.queue.length);
 
     const onSerialPortWrite = (error: Error | null | undefined) => {
       if (error) {
         log.error('[IbusInterface] Failed to write: ' + error);
       } else {
-        log.info('[IbusInterface] Wrote to Device: %O', dataBuf);
+        log.debug('[IbusInterface] Wrote to Device: %O', dataBuf);
 
         this.serialPort?.drain((error) => {
           log.debug('Data drained');
 
           // this counts as an activity, so mark it
           this.lastActivityTime = process.hrtime();
-
-          ready();
         });
       }
     };
