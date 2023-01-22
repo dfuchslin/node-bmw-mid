@@ -52,10 +52,10 @@ const handleVolume = (message: FullIbusMessage) => {
 
   switch (direction) {
     case '+':
-      main_volume = main_volume + volume_inc;
+      main_volume = main_volume + 1 * volume_inc;
       break;
     case '-':
-      main_volume = main_volume - volume_inc;
+      main_volume = main_volume - 1 * volume_inc;
   }
 
   // Disregard min and max volume levels
