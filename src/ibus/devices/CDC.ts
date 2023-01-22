@@ -1,5 +1,5 @@
 import { IbusInterface } from '../../lib/ibus';
-import { buildMessage, deviceStatus } from '../../lib/ibus/message';
+import { buildMessage } from '../../lib/ibus/message';
 import Logger from '../../lib/log';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
 
@@ -20,11 +20,6 @@ const term = () => {
 
 const parseMessage = (message: FullIbusMessage) => {
   switch (message.msg[0]) {
-    case 0x01: {
-      // Request device status
-      ibusInterface.sendMessage(deviceStatus(id));
-      break;
-    }
     default:
       log.warn('Unhandled message!', message.msg);
   }
