@@ -8,6 +8,8 @@ const namespace = IbusDeviceId[id].toLowerCase();
 const log = Logger.get(namespace);
 let ibusInterface: IbusInterface;
 
+let main_volume = 0;
+
 const init = (_ibusInterface: IbusInterface) => {
   log.notice('init');
   ibusInterface = _ibusInterface;
@@ -48,11 +50,23 @@ const handleVolume = (message: FullIbusMessage) => {
   const direction = volume & 0x01 && true ? '+' : '-';
   const volume_inc = Math.floor(volume / 0x10);
 
-  log.notice('volume ' + direction + volume_inc + ' (' + volume + ')');
+  switch (direction) {
+    case '+':
+      main_volume = main_volume + volume_inc;
+      break;
+    case '-':
+      main_volume = main_volume - volume_inc;
+  }
+
+  // Disregard min and max volume levels
+  if (main_volume < 1) main_volume = 0;
+  if (main_volume > 100) main_volume = 100;
+
+  log.notice('volume ' + direction + volume_inc + ' (' + volume + ') --> ' + main_volume);
 
   // Upper left - 11 char radio display
   let msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([msg, ascii2paddedHex(`vol ${volume_inc}`, 11)]);
+  msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${main_volume}`, 11)]);
   ibusInterface.sendMessage(buildMessage(id, message.src, msg));
 };
 

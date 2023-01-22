@@ -17,6 +17,7 @@ const term = () => {
 };
 
 const parseMessage = (message: FullIbusMessage) => {
+  // the real MID should be responding to all messages sent to it so this could should be theoretically be removed
   switch (message.msg[0]) {
     default:
       log.warn('Unhandled message!', message.msg);

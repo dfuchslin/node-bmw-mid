@@ -36,6 +36,6 @@ export const ascii2paddedHex = (text: string, length: number): Buffer => {
   if (text.length >= length) {
     return unpadded;
   }
-  const padding = Buffer.alloc(length - text.length, 0x2f);
+  const padding = Buffer.alloc(length - text.length, 0x20);
   return Buffer.concat([unpadded, padding]);
 };
