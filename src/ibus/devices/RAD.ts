@@ -1,4 +1,5 @@
 import { IbusInterface } from '../../lib/ibus';
+import { ascii2paddedHex, buildMessage } from '../../lib/ibus/message';
 import Logger from '../../lib/log';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
 
@@ -48,6 +49,11 @@ const handleVolume = (message: FullIbusMessage) => {
   const volume_inc = Math.floor(volume / 0x10);
 
   log.notice('volume ' + direction + volume_inc + ' (' + volume + ')');
+
+  // Upper left - 11 char radio display
+  let msg = Buffer.from([0x23, 0x40, 0x20]);
+  msg = Buffer.concat([msg, ascii2paddedHex(`vol ${volume_inc}`, 11)]);
+  ibusInterface.sendMessage(buildMessage(id, message.src, msg));
 };
 
 export const RAD: Device = {

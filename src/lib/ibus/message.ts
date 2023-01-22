@@ -17,7 +17,25 @@ export const deviceStatus = (src: IbusDeviceId) => {
 export const buildMessage = (
   src: IbusDeviceId,
   dst: IbusDeviceId,
-  message: byte[]
+  message: byte[] | Buffer
 ): IbusMessage => {
   return { src, dst, msg: Buffer.from(message) };
+};
+
+export const ascii2hex = (text: string, length = -1): Buffer => {
+  // TODO transcode utf8 text to displayable characters
+  const buf = Buffer.from(text, 'utf8');
+  if (length < 0) {
+    return buf;
+  }
+  return buf.subarray(0, length);
+};
+
+export const ascii2paddedHex = (text: string, length: number): Buffer => {
+  const unpadded = ascii2hex(text, length);
+  if (text.length >= length) {
+    return unpadded;
+  }
+  const padding = Buffer.alloc(length - text.length, 0x2f);
+  return Buffer.concat([unpadded, padding]);
 };
