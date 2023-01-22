@@ -25,7 +25,7 @@ const parseMessage = (message: FullIbusMessage) => {
       break;
     }
     default:
-      log.warn(`Unhandled message! ${message.msg}`);
+      log.warn('Unhandled message!', message.msg);
   }
 };
 
