@@ -3,8 +3,8 @@ import Logger from '../../lib/log';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
 
 const id = IbusDeviceId.IKE;
-const namespace = IbusDeviceId[id].toLowerCase();
-const log = Logger.get(namespace);
+const context = IbusDeviceId[id].toLowerCase();
+const log = Logger.get(context);
 let ibusInterface: IbusInterface;
 
 const init = (_ibusInterface: IbusInterface) => {
