@@ -10,8 +10,8 @@ import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
 import { FullIbusMessage, IbusMessage } from '../../types/ibus';
 import { CustomEmitter, LogLevel } from '../../types';
 
-const namespace = 'ibus-bus';
-const log = Logger.get(namespace);
+const context = 'ibus-bus';
+const log = Logger.get(context);
 
 export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   private devicePath: string;
@@ -21,7 +21,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   private parser: IbusProtocol | undefined;
 
   constructor(devicePath: string) {
-    super(namespace, LogLevel.DEBUG);
+    super({ context, logLevel: LogLevel.DEBUG });
 
     this.devicePath = devicePath;
     this.lastActivityTime = process.hrtime();
@@ -47,12 +47,12 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       }
     });
 
-    this.serialPort.on('data', (data: any) => {
+    this.serialPort.on('data', (data: unknown) => {
       log.debug('[IbusInterface] Data: %O', data);
       this.lastActivityTime = process.hrtime();
     });
 
-    this.serialPort.on('error', (err: any) => {
+    this.serialPort.on('error', (err: unknown) => {
       log.error('[IbusInterface] Error', err);
       this.shutdown(this.startup);
     });
@@ -102,7 +102,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       } else {
         log.debug('[IbusInterface] Wrote to Device: %O', dataBuf);
 
-        this.serialPort?.drain((error) => {
+        this.serialPort?.drain(() => {
           log.debug('Data drained');
 
           // this counts as an activity, so mark it
@@ -121,7 +121,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   shutdown(callback = () => {}) {
     log.info('[IbusInterface] Shutting down Ibus device..');
 
-    const onSerialPortClose = (error: any) => {
+    const onSerialPortClose = (error: unknown) => {
       if (error) {
         log.error('[IbusInterface] Error closing port', error);
         callback();
@@ -145,7 +145,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       msg.crc
     );
 
-    this.emit(namespace, 'data', msg);
+    this.emit('data', msg, { context });
   }
 
   sendMessage(msg: IbusMessage) {

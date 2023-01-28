@@ -5,8 +5,8 @@ import { IKE, MID, RAD, TEL } from './devices';
 import { CDC } from './devices/CDC';
 import { deviceStatus } from '../lib/ibus/message';
 
-const namespace = 'ibus-router';
-const log = Logger.get(namespace);
+const context = 'ibus-router';
+const log = Logger.get(context);
 let ibusInterface: IbusInterface;
 
 const registeredDevices: Record<number, Device> = {
@@ -19,7 +19,7 @@ const registeredDevices: Record<number, Device> = {
 
 const init = async (_ibusInterface: IbusInterface) => {
   ibusInterface = _ibusInterface;
-  ibusInterface.on(namespace, 'data', routeMessage);
+  ibusInterface.on('data', routeMessage, { context });
   log.notice('Initialized ibus message router');
   Object.values<Device>(registeredDevices).forEach((device) => device.init(ibusInterface));
 };
@@ -40,10 +40,7 @@ const routeMessage = (message: FullIbusMessage) => {
     return destination.parseMessage(message);
   }
 
-  log.error(
-    `unhandled src:${IbusDeviceId[message.src]} dst:${IbusDeviceId[message.dst]} msg:`,
-    message.msg
-  );
+  log.error(`unhandled src:${IbusDeviceId[message.src]} dst:${IbusDeviceId[message.dst]} msg:`, message.msg);
 };
 
 const handleDeviceStatusRequest = (message: FullIbusMessage) => {

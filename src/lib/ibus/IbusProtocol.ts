@@ -26,6 +26,7 @@ export class IbusProtocol extends Transform {
     this._isProcessing = false;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _transform(chunk: any, encoding: BufferEncoding, done: TransformCallback) {
     if (this._isProcessing === true) {
       log.error('[IbusProtocol] Error. This _transform function should NOT be running..');

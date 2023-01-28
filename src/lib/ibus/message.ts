@@ -14,11 +14,7 @@ export const deviceStatus = (src: IbusDeviceId) => {
   return buildMessage(src, dst, [0x02, 0x00]);
 };
 
-export const buildMessage = (
-  src: IbusDeviceId,
-  dst: IbusDeviceId,
-  message: byte[] | Buffer
-): IbusMessage => {
+export const buildMessage = (src: IbusDeviceId, dst: IbusDeviceId, message: byte[] | Buffer): IbusMessage => {
   return { src, dst, msg: Buffer.from(message) };
 };
 

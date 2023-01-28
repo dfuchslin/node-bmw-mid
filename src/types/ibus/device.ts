@@ -70,7 +70,7 @@ export enum IbusDeviceId {
 }
 
 export interface Device {
-  id: typeof IbusDeviceId[keyof typeof IbusDeviceId];
+  id: (typeof IbusDeviceId)[keyof typeof IbusDeviceId];
   init(ibusInterface: IbusInterface): void;
   term(): void;
   parseMessage(message: FullIbusMessage): void;

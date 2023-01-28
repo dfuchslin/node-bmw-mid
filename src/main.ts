@@ -2,10 +2,10 @@ import Logger from './lib/log';
 import api from './api';
 import power from './lib/power';
 import ibus from './ibus';
-import { PowerState } from './types';
+import { PowerEvent, PowerState } from './types';
 
-const namespace = 'main';
-const log = Logger.get(namespace);
+const context = 'main';
+const log = Logger.get(context);
 
 const init_signal_listeners = async () => {
   process.on('SIGTERM', async () => {
@@ -31,14 +31,14 @@ const init = async () => {
   await power.init();
   await ibus.init();
 
-  power.emit(namespace, 'power', PowerState.On);
+  power.emit(PowerEvent.Power, PowerState.On, { context });
 };
 
 const term = async () => {
   log.notice('Terminating');
 
   await ibus.term();
-  power.emit(namespace, 'power', PowerState.Off);
+  power.emit(PowerEvent.Power, PowerState.Off, { context });
 
   await api.term();
   await power.term();
