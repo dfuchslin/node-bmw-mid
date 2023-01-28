@@ -1,4 +1,4 @@
-import { IbusDeviceId, IbusMessage, byte } from '../../types';
+import { IbusDeviceId, IbusMessage, byte } from '../types';
 
 export const deviceStatus = (src: IbusDeviceId) => {
   let dst;

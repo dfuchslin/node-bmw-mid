@@ -6,7 +6,7 @@ Also rudimentary conversion to typescript
 
 import Logger from 'log';
 import { Transform, TransformCallback } from 'stream';
-import { FullIbusMessage, IbusMessage } from '../../types/ibus';
+import { FullIbusMessage, IbusMessage } from '../../types';
 
 const namespace = 'ibus-protocol';
 const log = Logger.get(namespace);
@@ -28,7 +28,7 @@ export class IbusProtocol extends Transform {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _transform(chunk: any, encoding: BufferEncoding, done: TransformCallback) {
-    if (this._isProcessing === true) {
+    if (this._isProcessing) {
       log.error('[IbusProtocol] Error. This _transform function should NOT be running..');
     }
 
@@ -65,7 +65,7 @@ export class IbusProtocol extends Transform {
       // look for messages in current chunk
       for (let i = 0; i < cchunk.length - 5; i++) {
         // BEGIN MESSAGE
-        mSrc = cchunk[i + 0];
+        mSrc = cchunk[i];
         mLen = cchunk[i + 1];
         mDst = cchunk[i + 2];
 

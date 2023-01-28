@@ -3,7 +3,7 @@ import { IbusInterface } from '../lib/ibus';
 import { Device, FullIbusMessage, IbusDeviceId } from '../types';
 import { IKE, MID, RAD, TEL } from './devices';
 import { CDC } from './devices/CDC';
-import { deviceStatus } from '../lib/ibus/message';
+import { deviceStatus } from './message';
 
 const context = 'ibus-router';
 const log = Logger.get(context);

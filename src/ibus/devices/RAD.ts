@@ -1,5 +1,5 @@
 import { IbusInterface } from '../../lib/ibus';
-import { ascii2paddedHex, buildMessage } from '../../lib/ibus/message';
+import { ascii2paddedHex, buildMessage } from '../message';
 import Logger from '../../lib/log';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
 

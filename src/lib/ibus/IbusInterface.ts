@@ -7,14 +7,13 @@ Also rudimentary conversion to typescript
 import Logger from 'log';
 import { SerialPort } from 'serialport';
 import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
-import { FullIbusMessage, IbusMessage } from '../../types/ibus';
-import { CustomEmitter, LogLevel } from '../../types';
+import { FullIbusMessage, IbusMessage, CustomEmitter, LogLevel } from '../../types';
 
 const context = 'ibus-bus';
 const log = Logger.get(context);
 
 export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
-  private devicePath: string;
+  private readonly devicePath: string;
   private lastActivityTime: [number, number];
   private queue: Buffer[];
   private serialPort: SerialPort | undefined;
