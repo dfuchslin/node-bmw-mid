@@ -1,26 +1,26 @@
-import Router from "koa-router";
-import Logger from "../lib/log";
-import power from "../lib/power";
-import { PowerEvent, PowerState } from "../types";
+import Router from 'koa-router';
+import Logger from '../lib/log';
+import power from '../lib/power';
+import { PowerEvent, PowerState } from '../types';
 
-const context = "api";
+const context = 'api';
 const log = Logger.get(context);
 const router = new Router();
 
-router.get("/", async (ctx, next) => {
-  log.info("/");
-  ctx.body = "hello world";
+router.get('/', async (ctx, next) => {
+  log.info('/');
+  ctx.body = 'hello world';
   await next();
 });
 
-router.post("/power/:name/:state", async (ctx, next) => {
+router.post('/power/:name/:state', async (ctx, next) => {
   switch (ctx.params.name) {
-    case "power":
+    case 'power':
       switch (ctx.params.state) {
-        case "on":
+        case 'on':
           power.emit(PowerEvent.Power, PowerState.On, { context });
           break;
-        case "off":
+        case 'off':
           power.emit(PowerEvent.Power, PowerState.Off, { context });
           break;
         default:
@@ -28,12 +28,12 @@ router.post("/power/:name/:state", async (ctx, next) => {
       }
       break;
 
-    case "light":
+    case 'light':
       switch (ctx.params.state) {
-        case "on":
+        case 'on':
           power.emit(PowerEvent.Light, PowerState.On, { context });
           break;
-        case "off":
+        case 'off':
           power.emit(PowerEvent.Light, PowerState.Off, { context });
           break;
         default:
@@ -44,7 +44,7 @@ router.post("/power/:name/:state", async (ctx, next) => {
     default:
       break;
   }
-  ctx.body = "updated";
+  ctx.body = 'updated';
   await next();
 });
 
