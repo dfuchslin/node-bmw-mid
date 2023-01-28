@@ -9,9 +9,9 @@ class GPIOEmitter extends CustomEmitter<{
 
 const context = 'gpio';
 const log = Logger.get(context);
-const powerEmitter = new GPIOEmitter({ context });
+const gpioEmitter = new GPIOEmitter({ context });
 
-powerEmitter.on(GPIO.Power, async (state) => {
+gpioEmitter.on(GPIO.Power, async (state) => {
   switch (state) {
     case GPIOState.On:
       await gpio.power.on();
@@ -29,7 +29,7 @@ powerEmitter.on(GPIO.Power, async (state) => {
   }
 });
 
-powerEmitter.on(GPIO.Light, async (state) => {
+gpioEmitter.on(GPIO.Light, async (state) => {
   switch (state) {
     case GPIOState.On:
       await gpio.light.on();
@@ -60,6 +60,6 @@ const term = async () => {
 export default {
   init,
   term,
-  on: powerEmitter.on.bind(powerEmitter),
-  emit: powerEmitter.emit.bind(powerEmitter),
+  on: gpioEmitter.on.bind(gpioEmitter),
+  emit: gpioEmitter.emit.bind(gpioEmitter),
 };
