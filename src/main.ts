@@ -1,8 +1,8 @@
 import Logger from './lib/log';
 import api from './api';
-import power from './lib/power';
+import gpio from './gpio';
 import ibus from './ibus';
-import { PowerEvent, PowerState } from './types';
+import { GPIO, GPIOState } from './types';
 
 const context = 'main';
 const log = Logger.get(context);
@@ -28,20 +28,20 @@ const init = async () => {
 
   await init_signal_listeners();
   await api.init();
-  await power.init();
+  await gpio.init();
   await ibus.init();
 
-  power.emit(PowerEvent.Power, PowerState.On, { context });
+  gpio.emit(GPIO.Power, GPIOState.On, { context });
 };
 
 const term = async () => {
   log.notice('Terminating');
 
   await ibus.term();
-  power.emit(PowerEvent.Power, PowerState.Off, { context });
+  gpio.emit(GPIO.Power, GPIOState.Off, { context });
 
   await api.term();
-  await power.term();
+  await gpio.term();
   process.exit();
 };
 

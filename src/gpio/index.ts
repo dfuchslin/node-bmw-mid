@@ -1,45 +1,45 @@
-import gpio from './gpio';
+import gpio from './gpio-bus';
 import Logger from '../lib/log';
-import { CustomEmitter, PowerEvent, PowerState } from '../types';
+import { CustomEmitter, GPIO, GPIOState } from '../types';
 
-class PowerEmitter extends CustomEmitter<{
-  [PowerEvent.Power]: PowerState;
-  [PowerEvent.Light]: PowerState;
+class GPIOEmitter extends CustomEmitter<{
+  [GPIO.Power]: GPIOState;
+  [GPIO.Light]: GPIOState;
 }> {}
 
-const context = 'power';
+const context = 'gpio';
 const log = Logger.get(context);
-const powerEmitter = new PowerEmitter({ context });
+const powerEmitter = new GPIOEmitter({ context });
 
-powerEmitter.on(PowerEvent.Power, async (state) => {
+powerEmitter.on(GPIO.Power, async (state) => {
   switch (state) {
-    case PowerState.On:
+    case GPIOState.On:
       await gpio.power.on();
       break;
 
-    case PowerState.Off:
+    case GPIOState.Off:
       await gpio.light.off();
       await gpio.power.off();
       break;
 
-    case PowerState.Toggle:
+    case GPIOState.Toggle:
     default:
       log.info('event: power toggle');
     // TODO
   }
 });
 
-powerEmitter.on(PowerEvent.Light, async (state) => {
+powerEmitter.on(GPIO.Light, async (state) => {
   switch (state) {
-    case PowerState.On:
+    case GPIOState.On:
       await gpio.light.on();
       break;
 
-    case PowerState.Off:
+    case GPIOState.Off:
       await gpio.light.off();
       break;
 
-    case PowerState.Toggle:
+    case GPIOState.Toggle:
     default:
       log.info('event: light toggle');
     // TODO

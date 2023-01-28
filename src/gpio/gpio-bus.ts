@@ -2,7 +2,8 @@ import { Gpio } from 'onoff';
 import Logger from '../lib/log';
 import { config } from '../config';
 
-const log = Logger.get('gpio');
+const context = 'gpio-bus';
+const log = Logger.get(context);
 let rpi_gpio: { power: Gpio; light: Gpio };
 
 const init = async () => {

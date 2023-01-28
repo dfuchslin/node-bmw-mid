@@ -1,7 +1,7 @@
 import Router from 'koa-router';
 import Logger from '../lib/log';
-import power from '../lib/power';
-import { PowerEvent, PowerState } from '../types';
+import gpio from '../gpio';
+import { GPIO, GPIOState } from '../types';
 
 const context = 'api';
 const log = Logger.get(context);
@@ -18,10 +18,10 @@ router.post('/power/:name/:state', async (ctx, next) => {
     case 'power':
       switch (ctx.params.state) {
         case 'on':
-          power.emit(PowerEvent.Power, PowerState.On, { context });
+          gpio.emit(GPIO.Power, GPIOState.On, { context });
           break;
         case 'off':
-          power.emit(PowerEvent.Power, PowerState.Off, { context });
+          gpio.emit(GPIO.Power, GPIOState.Off, { context });
           break;
         default:
           break;
@@ -31,10 +31,10 @@ router.post('/power/:name/:state', async (ctx, next) => {
     case 'light':
       switch (ctx.params.state) {
         case 'on':
-          power.emit(PowerEvent.Light, PowerState.On, { context });
+          gpio.emit(GPIO.Light, GPIOState.On, { context });
           break;
         case 'off':
-          power.emit(PowerEvent.Light, PowerState.Off, { context });
+          gpio.emit(GPIO.Light, GPIOState.Off, { context });
           break;
         default:
           break;
