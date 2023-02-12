@@ -52,17 +52,17 @@ const handleVolume = (message: FullIbusMessage) => {
 
   switch (direction) {
     case '+':
-      main_volume = main_volume + 1 * volume_inc;
+      main_volume = main_volume + volume_inc;
       break;
     case '-':
-      main_volume = main_volume - 1 * volume_inc;
+      main_volume = main_volume - volume_inc;
   }
 
   // Disregard min and max volume levels
   if (main_volume < 1) main_volume = 0;
   if (main_volume > 100) main_volume = 100;
 
-  log.notice('volume ' + direction + volume_inc + ' (' + volume + ') --> ' + main_volume);
+  log.notice(`volume ${direction} ${volume_inc} (${volume}) --> ${main_volume}`);
 
   // Upper left - 11 char radio display
   let msg = Buffer.from([0x23, 0x40, 0x20]);
