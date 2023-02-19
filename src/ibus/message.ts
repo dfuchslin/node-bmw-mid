@@ -20,7 +20,7 @@ export const buildMessage = (src: IbusDeviceId, dst: IbusDeviceId, message: byte
 
 export const ascii2hex = (text: string, length = -1): Buffer => {
   // TODO transcode utf8 text to displayable characters
-  const buf = Buffer.from(text, 'utf8');
+  const buf = Buffer.from(text, 'ascii');
   if (length < 0) {
     return buf;
   }

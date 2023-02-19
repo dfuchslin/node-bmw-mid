@@ -2,6 +2,7 @@ import Router from 'koa-router';
 import Logger from '../lib/log';
 import gpio from '../gpio';
 import { GPIO, GPIOState } from '../types';
+import ibus from '../ibus';
 
 const context = 'api';
 const log = Logger.get(context);
@@ -45,6 +46,13 @@ router.post('/power/:name/:state', async (ctx, next) => {
       break;
   }
   ctx.body = 'updated';
+  await next();
+});
+
+router.post('/ibus/message', async (ctx, next) => {
+  const msg = ctx.request.rawBody.split(',').map((h) => parseInt(h, 16));
+  ibus.sendMessage(msg[0], msg[1], msg.slice(2));
+  ctx.body = `Sent message: ${msg}`;
   await next();
 });
 

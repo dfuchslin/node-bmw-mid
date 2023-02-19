@@ -2,6 +2,7 @@ import { IbusInterface } from '../lib/ibus';
 import Logger from '../lib/log';
 import { config } from '../config';
 import router from './router';
+import { buildMessage } from './message';
 
 const namespace = 'ibus';
 const log = Logger.get(namespace);
@@ -24,7 +25,12 @@ const term = async () => {
   await router.term();
 };
 
+const sendMessage = (src: number, dest: number, msg: number[]) => {
+  ibusInterface.sendMessage(buildMessage(src, dest, Buffer.from(msg)));
+};
+
 export default {
   init,
   term,
+  sendMessage,
 };
