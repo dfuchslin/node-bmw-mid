@@ -36,6 +36,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       parity: 'even',
       stopBits: 1,
       dataBits: 8,
+      rtscts: true,
     });
 
     this.serialPort.open(function (error) {
@@ -74,7 +75,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
   }
 
   private watchForEmptyBus() {
-    if (this.getHrDiffTime(this.lastActivityTime) >= 20) {
+    if (this.getHrDiffTime(this.lastActivityTime) >= 5) {
       this.processWriteQueue();
     }
     setTimeout(() => this.watchForEmptyBus(), 1);
@@ -107,6 +108,9 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
           // this counts as an activity, so mark it
           this.lastActivityTime = process.hrtime();
         });
+
+        // needed to add lastactivitytime here in order for multiple messages to not get lost
+        this.lastActivityTime = process.hrtime();
       }
     };
     this.serialPort?.write(dataBuf, onSerialPortWrite);
