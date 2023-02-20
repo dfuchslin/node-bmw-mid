@@ -1,5 +1,4 @@
 import { describe, expect, test } from '@jest/globals';
-import each from 'jest-each';
 import iconv from '../../src/lib/iconv';
 
 describe('iconv', () => {
