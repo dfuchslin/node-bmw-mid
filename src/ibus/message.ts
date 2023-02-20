@@ -1,3 +1,4 @@
+import iconv from '../lib/iconv';
 import { IbusDeviceId, IbusMessage, byte } from '../types';
 
 export const deviceStatus = (src: IbusDeviceId) => {
@@ -18,8 +19,15 @@ export const buildMessage = (src: IbusDeviceId, dst: IbusDeviceId, message: byte
   return { src, dst, msg: Buffer.from(message) };
 };
 
+export const utf82hex = (text: string, length = -1): Buffer => {
+  return ascii2hex(iconv.utf8_ibusascii(text), length);
+};
+
+export const utf82paddedHex = (text: string, length: number): Buffer => {
+  return ascii2paddedHex(iconv.utf8_ibusascii(text), length);
+};
+
 export const ascii2hex = (text: string, length = -1): Buffer => {
-  // TODO transcode utf8 text to displayable characters
   const buf = Buffer.from(text, 'ascii');
   if (length < 0) {
     return buf;

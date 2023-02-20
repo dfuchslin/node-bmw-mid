@@ -17,15 +17,11 @@ describe('ascii2hex', () => {
     expect(result).toStrictEqual(Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]));
   });
   each(codepoints).test(
-    "utf-8 character '%s' should be converted to its correct codepoint=%s",
+    "character '%s' should be converted to its correct codepoint=%s",
     (char: string, expected: number) => {
       expect(ascii2hex(char)).toStrictEqual(Buffer.from([expected]));
     }
   );
-  //   test('unknown characters should be converted to their equivalent', () => {
-  //     const result = parsePublishDateFromStringAndAddAppropriateTime('2022-11-22');
-  //     expect(result).toBe('2022-11-22T13:14:15.000Z');
-  //   });
 });
 
 describe('ascii2paddedhex', () => {
@@ -39,8 +35,4 @@ describe('ascii2paddedhex', () => {
     const result = ascii2paddedHex('Hello', 5);
     expect(result).toStrictEqual(Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]));
   });
-  //   test('unknown characters should be converted to their equivalent', () => {
-  //     const result = parsePublishDateFromStringAndAddAppropriateTime('2022-11-22');
-  //     expect(result).toBe('2022-11-22T13:14:15.000Z');
-  //   });
 });
