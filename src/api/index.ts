@@ -1,9 +1,9 @@
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import json from 'koa-json';
-import Logger from '../lib/log';
-import { config } from '../config';
-import router from './routes';
+import Logger from '@/lib/log';
+import { config } from '@/config';
+import router from '@/api/routes';
 
 const namespace = 'api';
 const log = Logger.get(namespace);

@@ -1,5 +1,5 @@
-import { FullIbusMessage } from '.';
-import { IbusInterface } from '../../lib/ibus';
+import { FullIbusMessage } from '@/types/ibus';
+import { IbusInterface } from '@/lib/ibus';
 
 /* from https://github.com/kmalinich/node-bmw-interface */
 export enum IbusDeviceId {
