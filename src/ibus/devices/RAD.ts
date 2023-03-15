@@ -1,7 +1,7 @@
-import { IbusInterface } from '../../lib/ibus';
-import { ascii2paddedHex, buildMessage } from '../message';
-import Logger from '../../lib/log';
-import { Device, FullIbusMessage, IbusDeviceId } from '../../types';
+import { IbusInterface } from '@/lib/ibus';
+import { ascii2paddedHex, buildMessage } from '@/ibus/message';
+import Logger from '@/lib/log';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
 
 const id = IbusDeviceId.RAD;
 const context = IbusDeviceId[id].toLowerCase();

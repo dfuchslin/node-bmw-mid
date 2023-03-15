@@ -3,11 +3,8 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  projects: [
-    {
-      preset: 'ts-jest',
-      displayName: 'unit',
-      rootDir: './test',
-    },
-  ],
+  rootDir: './test',
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/../src/$1',
+  },
 };

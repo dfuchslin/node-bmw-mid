@@ -1,6 +1,6 @@
-import gpio from './gpio-bus';
-import Logger from '../lib/log';
-import { CustomEmitter, GPIO, GPIOState } from '../types';
+import gpio from '@/gpio/gpio-bus';
+import Logger from '@/lib/log';
+import { CustomEmitter, GPIO, GPIOState } from '@/types';
 
 class GPIOEmitter extends CustomEmitter<{
   [GPIO.Power]: GPIOState;

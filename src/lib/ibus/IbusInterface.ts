@@ -6,8 +6,8 @@ Also rudimentary conversion to typescript
 
 import Logger from 'log';
 import { SerialPort } from 'serialport';
-import { IbusProtocol, createBufferFromIbusMessage } from './IbusProtocol';
-import { FullIbusMessage, IbusMessage, CustomEmitter, LogLevel } from '../../types';
+import { createBufferFromIbusMessage, IbusProtocol } from '@/lib/ibus/IbusProtocol';
+import { CustomEmitter, FullIbusMessage, IbusMessage, LogLevel } from '@/types';
 
 const context = 'ibus-bus';
 const log = Logger.get(context);

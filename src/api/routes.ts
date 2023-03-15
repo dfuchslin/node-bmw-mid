@@ -1,8 +1,8 @@
 import Router from 'koa-router';
-import Logger from '../lib/log';
-import gpio from '../gpio';
-import { GPIO, GPIOState } from '../types';
-import ibus from '../ibus';
+import Logger from '@/lib/log';
+import gpio from '@/gpio';
+import { GPIO, GPIOState } from '@/types';
+import ibus from '@/ibus';
 
 const context = 'api';
 const log = Logger.get(context);

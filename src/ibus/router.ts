@@ -1,9 +1,8 @@
-import Logger from '../lib/log';
-import { IbusInterface } from '../lib/ibus';
-import { Device, FullIbusMessage, IbusDeviceId } from '../types';
-import { IKE, MID, RAD, TEL } from './devices';
-import { CDC } from './devices/CDC';
-import { deviceStatus } from './message';
+import Logger from '@/lib/log';
+import { IbusInterface } from '@/lib/ibus';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
+import { CDC, IKE, MID, RAD, TEL } from '@/ibus/devices';
+import { deviceStatus } from '@/ibus/message';
 
 const context = 'ibus-router';
 const log = Logger.get(context);
