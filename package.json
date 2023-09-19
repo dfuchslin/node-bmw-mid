@@ -7,7 +7,7 @@
   "scripts": {
     "build": "npx tsc && npx resolve-tspaths",
     "start": "npm run build && node build/src/main.js",
-    "dev": "nodemon --inspect --watch src/ ./src/main.ts --exec \"npm run build\" --verbose -e ts",
+    "dev": "LOG_LEVEL=debug nodemon --inspect --watch src/ ./src/main.ts --exec \"npm run build && node --inspect build/src/main.js\" --verbose -e ts",
     "test": "npx jest",
     "test:watch": "npx jest --watchAll",
     "lint": "eslint . --ext .ts"
