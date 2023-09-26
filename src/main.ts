@@ -3,6 +3,7 @@ import api from '@/api';
 import gpio from '@/gpio';
 import ibus from '@/ibus';
 import { GPIO, GPIOState } from '@/types';
+import { EventBus } from '@/eventbus';
 
 const context = 'main';
 const log = Logger.get(context);
@@ -27,9 +28,11 @@ const init = async () => {
   log.notice('Initializing');
 
   await init_signal_listeners();
-  await api.init();
-  await gpio.init();
-  await ibus.init();
+
+  const eventBus = new EventBus();
+  await api.init(eventBus);
+  await gpio.init(eventBus);
+  await ibus.init(eventBus);
 
   gpio.emit(GPIO.Power, GPIOState.On, { context });
 };

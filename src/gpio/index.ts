@@ -1,6 +1,7 @@
 import gpio from '@/gpio/gpio-bus';
 import Logger from '@/lib/log';
 import { CustomEmitter, GPIO, GPIOState } from '@/types';
+import { EventBus } from '@/eventbus';
 
 class GPIOEmitter extends CustomEmitter<{
   [GPIO.Power]: GPIOState;
@@ -25,7 +26,7 @@ gpioEmitter.on(GPIO.Power, async (state) => {
     case GPIOState.Toggle:
     default:
       log.info('event: power toggle');
-    // TODO
+      // TODO
   }
 });
 
@@ -42,11 +43,11 @@ gpioEmitter.on(GPIO.Light, async (state) => {
     case GPIOState.Toggle:
     default:
       log.info('event: light toggle');
-    // TODO
+      // TODO
   }
 });
 
-const init = async () => {
+const init = async (eventBus: EventBus) => {
   log.notice('Initializing power');
   await gpio.init();
 };
