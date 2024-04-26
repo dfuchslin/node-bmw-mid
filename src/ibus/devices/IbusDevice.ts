@@ -13,7 +13,7 @@ abstract class IbusDevice implements Device {
   protected readonly ibusInterface: IbusInterface;
   protected readonly eventBus: EventBus;
 
-  constructor(id: IbusDeviceId, config: IbusDeviceConfig) {
+  protected constructor(id: IbusDeviceId, config: IbusDeviceConfig) {
     this.id = id;
     this.context = IbusDeviceId[this.id].toLowerCase();
     this.log = Logger.get(this.context);
