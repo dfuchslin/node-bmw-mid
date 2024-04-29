@@ -10,6 +10,7 @@ const log = Logger.get(context);
 const init_signal_listeners = async () => {
   process.on('SIGTERM', async () => {
     log.warn('Caught SIGTERM');
+    log.warn("asdf");
     await term();
   });
 
