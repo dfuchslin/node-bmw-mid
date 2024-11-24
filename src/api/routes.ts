@@ -50,7 +50,7 @@ router.post('/power/:name/:state', async (ctx, next) => {
 });
 
 router.post('/ibus/message', async (ctx, next) => {
-  const msg = ctx.request.rawBody.split(',').map((h) => parseInt(h, 16));
+  const msg = (ctx.request.body as any).split(',').map((h: string) => parseInt(h, 16));
   ibus.sendMessage(msg[0], msg[1], msg.slice(2));
   ctx.body = `Sent message: ${msg}`;
   await next();
