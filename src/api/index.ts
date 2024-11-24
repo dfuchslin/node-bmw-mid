@@ -9,10 +9,6 @@ import { EventBus } from '@/eventbus';
 const namespace = 'api';
 const log = Logger.get(namespace);
 const app = new Koa();
-// const port = config.api.port;
-// app.use(bodyParser());
-// app.use(json());
-// app.use(router.routes()).use(router.allowedMethods());
 
 const init = async (eventBus: EventBus) => {
   const port = config.api.port;
