@@ -6,5 +6,5 @@ sudo adduser <username> dialout
 
 sync to rpi:
 ```
-rsync -av . rpi-bmwmid:node-bmw-mid/ --exclude node_modules --exclude .git --exclude build
+rsync -av . rpi-bmwmid:node-bmw-mid/ --exclude .git --exclude-from=.gitignore 
 ```
