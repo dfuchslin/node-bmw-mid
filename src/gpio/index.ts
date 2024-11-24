@@ -1,6 +1,7 @@
 import gpio from '@/gpio/gpio-bus';
 import Logger from '@/lib/log';
 import { CustomEmitter, GPIO, GPIOState } from '@/types';
+import { EventBus } from '@/eventbus';
 
 class GPIOEmitter extends CustomEmitter<{
   [GPIO.Power]: GPIOState;
@@ -46,7 +47,7 @@ gpioEmitter.on(GPIO.Light, async (state) => {
   }
 });
 
-const init = async () => {
+const init = async (eventBus: EventBus) => {
   log.notice('Initializing power');
   await gpio.init();
 };
