@@ -35,7 +35,7 @@
     "resolve-tspaths": "^0.8.22",
     "ts-jest": "^29.2.5",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.19.2",
+    "tsx": "^4.19.3",
     "typescript": "^5.7.2"
   },
   "dependencies": {
