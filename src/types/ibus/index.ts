@@ -1,4 +1,4 @@
-export * from '@/types/ibus/device';
+export * from '@/types/ibus/device.js';
 
 export type FullIbusMessage = IbusMessage & {
   id: number;

@@ -1,4 +1,4 @@
-import { CustomEmitter } from '@/types';
+import { CustomEmitter } from '@/types/index.js';
 
 export class EventBus extends CustomEmitter<any> {
   constructor() {

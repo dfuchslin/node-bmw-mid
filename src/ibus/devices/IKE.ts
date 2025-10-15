@@ -1,6 +1,6 @@
-import { IbusInterface } from '@/lib/ibus';
-import Logger from '@/lib/log';
-import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
+import { IbusInterface } from '@/lib/ibus/index.js';
+import Logger from '@/lib/log.js';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types/index.js';
 
 const id = IbusDeviceId.IKE;
 const context = IbusDeviceId[id].toLowerCase();

@@ -1,10 +1,10 @@
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import json from 'koa-json';
-import Logger from '@/lib/log';
-import { config } from '@/config';
-import router from '@/api/routes';
-import { EventBus } from '@/eventbus';
+import Logger from '@/lib/log.js';
+import { config } from '@/config.js';
+import router from '@/api/routes.js';
+import { EventBus } from '@/eventbus/index.js';
 
 const namespace = 'api';
 const log = Logger.get(namespace);

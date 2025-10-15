@@ -1,8 +1,8 @@
-import { IbusInterface } from '@/lib/ibus';
-import { buildMessage } from '@/ibus/message';
-import Logger from '@/lib/log';
-import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
-import { EventBus } from '@/eventbus';
+import { IbusInterface } from '@/lib/ibus/index.js';
+import { buildMessage } from '@/ibus/message.js';
+import Logger from '@/lib/log.js';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types/index.js';
+import { EventBus } from '@/eventbus/index.js';
 
 type IbusDeviceConfig = { ibusInterface: IbusInterface; eventBus: EventBus };
 

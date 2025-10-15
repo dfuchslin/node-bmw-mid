@@ -6,8 +6,8 @@ Also rudimentary conversion to typescript
 
 import Logger from 'log';
 import { SerialPort } from 'serialport';
-import { createBufferFromIbusMessage, IbusProtocol } from '@/lib/ibus/IbusProtocol';
-import { CustomEmitter, FullIbusMessage, IbusMessage, LogLevel } from '@/types';
+import { createBufferFromIbusMessage, IbusProtocol } from '@/lib/ibus/IbusProtocol.js';
+import { CustomEmitter, FullIbusMessage, IbusMessage, LogLevel } from '@/types/index.js';
 
 const context = 'ibus-bus';
 const log = Logger.get(context);
@@ -145,7 +145,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       msg.dst,
       msg.msg,
       '[' + msg.msg.toString('ascii') + ']',
-      msg.crc
+      msg.crc,
     );
 
     this.emit('data', msg, { context });

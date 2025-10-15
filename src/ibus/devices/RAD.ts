@@ -1,7 +1,7 @@
-import { IbusInterface } from '@/lib/ibus';
-import { ascii2paddedHex, buildMessage } from '@/ibus/message';
-import Logger from '@/lib/log';
-import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
+import { ascii2paddedHex, buildMessage } from '@/ibus/message.js';
+import { IbusInterface } from '@/lib/ibus/index.js';
+import Logger from '@/lib/log.js';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types/index.js';
 
 const id = IbusDeviceId.RAD;
 const context = IbusDeviceId[id].toLowerCase();
@@ -91,7 +91,12 @@ const handleVolume = (message: FullIbusMessage) => {
 
   // Upper right - 20 char obc display
   msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([msg, Buffer.from([0xc6, 0xc8, 0x20]), Buffer.from(volumeProgressBars[progressBarIndex]), Buffer.from(new Array(7).fill(0x20))]);
+  msg = Buffer.concat([
+    msg,
+    Buffer.from([0xc6, 0xc8, 0x20]),
+    Buffer.from(volumeProgressBars[progressBarIndex]),
+    Buffer.from(new Array(7).fill(0x20)),
+  ]);
   ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, message.src, msg));
 
   volumeTimestamp = new Date().getTime();
@@ -175,7 +180,6 @@ const clearScreen = () => {
   ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
 */
 
-  
   let msg = new Buffer([0x23, 0xe0, 0x20]);
   ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
 };

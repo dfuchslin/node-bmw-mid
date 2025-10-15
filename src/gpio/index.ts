@@ -1,7 +1,7 @@
-import gpio from '@/gpio/gpio-bus';
-import Logger from '@/lib/log';
-import { CustomEmitter, GPIO, GPIOState } from '@/types';
-import { EventBus } from '@/eventbus';
+import gpio from '@/gpio/gpio-bus.js';
+import Logger from '@/lib/log.js';
+import { CustomEmitter, GPIO, GPIOState } from '@/types/index.js';
+import { EventBus } from '@/eventbus/index.js';
 
 class GPIOEmitter extends CustomEmitter<{
   [GPIO.Power]: GPIOState;

@@ -1,9 +1,9 @@
-import Logger from '@/lib/log';
-import api from '@/api';
-import gpio from '@/gpio';
-import ibus from '@/ibus';
-import { GPIO, GPIOState } from '@/types';
-import { EventBus } from '@/eventbus';
+import Logger from '@/lib/log.js';
+import api from '@/api/index.js';
+import gpio from '@/gpio/index.js';
+import ibus from '@/ibus/index.js';
+import { GPIO, GPIOState } from '@/types/index.js';
+import { EventBus } from '@/eventbus/index.js';
 
 const context = 'main';
 const log = Logger.get(context);

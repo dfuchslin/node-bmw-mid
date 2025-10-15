@@ -1,11 +1,11 @@
-import Logger from '@/lib/log';
-import { IbusInterface } from '@/lib/ibus';
-import { Device, FullIbusMessage, IbusDeviceId } from '@/types';
+import Logger from '@/lib/log.js';
+import { IbusInterface } from '@/lib/ibus/index.js';
+import { Device, FullIbusMessage, IbusDeviceId } from '@/types/index.js';
 //import { CDC, IKE, MID, RAD, TEL } from '@/ibus/devices';
-import * as AllDevices from '@/ibus/devices';
-import { deviceStatus } from '@/ibus/message';
-import { EventBus } from '@/eventbus';
-import cdcnew from '@/ibus/devices/IbusDevice';
+import * as AllDevices from '@/ibus/devices/index.js';
+import { deviceStatus } from '@/ibus/message.js';
+import { EventBus } from '@/eventbus/index.js';
+import cdcnew from '@/ibus/devices/IbusDevice.js';
 
 const context = 'ibus-router';
 const log = Logger.get(context);

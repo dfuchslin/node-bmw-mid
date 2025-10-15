@@ -6,7 +6,7 @@ Also rudimentary conversion to typescript
 
 import Logger from 'log';
 import { Transform, TransformCallback } from 'stream';
-import { FullIbusMessage, IbusMessage } from '@/types';
+import { FullIbusMessage, IbusMessage } from '@/types/index.js';
 
 const namespace = 'ibus-protocol';
 const log = Logger.get(namespace);

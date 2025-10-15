@@ -4,5 +4,5 @@ Added here to support updated 'serialport' versions
 Also rudimentary conversion to typescript
 */
 
-export * from '@/lib/ibus/IbusInterface';
-export * from '@/lib/ibus/IbusProtocol';
+export * from '@/lib/ibus/IbusInterface.js';
+export * from '@/lib/ibus/IbusProtocol.js';

@@ -1,9 +1,9 @@
-import { IbusInterface } from '@/lib/ibus';
-import Logger from '@/lib/log';
-import { config } from '@/config';
-import router from '@/ibus/router';
-import { buildMessage } from '@/ibus/message';
-import { EventBus } from '@/eventbus';
+import { IbusInterface } from '@/lib/ibus/index.js';
+import Logger from '@/lib/log.js';
+import { config } from '@/config.js';
+import router from '@/ibus/router.js';
+import { buildMessage } from '@/ibus/message.js';
+import { EventBus } from '@/eventbus/index.js';
 
 const namespace = 'ibus';
 const log = Logger.get(namespace);
