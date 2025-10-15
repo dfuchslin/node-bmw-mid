@@ -1,6 +1,5 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from 'vitest';
 import { ascii2hex, ascii2paddedHex } from '../../src/ibus/message.js';
-const each = require('jest-each');
 
 const codepoints = Array.from(Array(96 + 32).keys())
   .slice(32)
@@ -16,9 +15,11 @@ describe('ascii2hex', () => {
     const result = ascii2hex('Hello world!', 5);
     expect(result).toStrictEqual(Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]));
   });
-  each(codepoints).test(
+  test.each(codepoints)(
     "character '%s' should be converted to its correct codepoint=%s",
-    (char: string, expected: number) => {
+    (...args: (string | number)[]) => {
+      const char = args[0] as string;
+      const expected = args[1] as number;
       expect(ascii2hex(char)).toStrictEqual(Buffer.from([expected]));
     },
   );
