@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
-import Logger from '@/lib/log.js';
-import { LogLevel } from '@/types/lib/log.js';
+import Logger from '../lib/log.js';
+import { LogLevel } from './lib/log.js';
 
 // https://rjzaworski.com/2019/10/event-emitters-in-typescript
 

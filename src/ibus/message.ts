@@ -1,5 +1,5 @@
-import iconv from '@/lib/iconv.js';
-import { byte, IbusDeviceId, IbusMessage } from '@/types/index.js';
+import iconv from '../lib/iconv.js';
+import { byte, IbusDeviceId, IbusMessage } from '../types/index.js';
 
 export const deviceStatus = (src: IbusDeviceId) => {
   let dst;

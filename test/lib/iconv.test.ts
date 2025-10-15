@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import iconv from '@/lib/iconv.js';
+import iconv from '../../src/lib/iconv.js';
 
 describe('iconv', () => {
   test('characters with accents should be converted to ibus ascii', () => {

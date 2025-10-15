@@ -1,6 +1,6 @@
 import * as pigpioClient from 'pigpio-client';
-import Logger from '@/lib/log.js';
-import { config } from '@/config.js';
+import Logger from '../lib/log.js';
+import { config } from '../config.js';
 
 const pigpio = pigpioClient.pigpio({ host: config.gpio.host });
 
