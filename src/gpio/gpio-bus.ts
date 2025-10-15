@@ -30,7 +30,7 @@ const init = async () => {
     await rpi_gpio.power.modeSet('output');
     await rpi_gpio.light.modeSet('output');
 
-    log.notice('Initialized GPIO with pigpio-client');
+    log.notice(`Initialized GPIO with pigpio-client connected to ${config.gpio.host}`);
   } catch (err) {
     log.error('Could not initialize GPIO', err);
     isConnected = false;
