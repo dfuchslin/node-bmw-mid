@@ -1,27 +1,35 @@
-import env from 'env-var';
+import dotenv from 'dotenv';
+import { z } from 'zod';
 
-// find rpi gpio mapping thusly: `cat /sys/kernel/debug/gpio`
-const GPIOMapping = {
-  // GPIO_14: 526,
-  // GPIO_15: 527,
-  GPIO_14: 14,
-  GPIO_15: 15,
-};
+const configSchema = z
+  .object({
+    API_PORT: z.coerce.number().prefault(3000),
+    // LOG_LEVEL: z
+    //   .enum(Object.keys(LogLevel) as [keyof typeof LogLevel])
+    //   .default('INFO')
+    //   .transform((val) => LogLevel[val]),
+    GPIO_HOST: z.string().prefault('localhost'),
+    GPIO_PINS_POWER: z.coerce.number().prefault(14),
+    GPIO_PINS_LIGHT: z.coerce.number().prefault(15),
+    IBUS_INTERFACE_PATH: z.string().prefault('/dev/ttyUSB0'),
+  })
+  .transform((val) => ({
+    api: {
+      port: val.API_PORT,
+    },
+    gpio: {
+      host: val.GPIO_HOST,
+      pins: {
+        power: val.GPIO_PINS_POWER,
+        light: val.GPIO_PINS_LIGHT,
+      },
+    },
+    ibus: {
+      interface: {
+        path: val.IBUS_INTERFACE_PATH,
+      },
+    },
+  }));
 
-export const config = {
-  api: {
-    port: env.get('API_PORT').default('3000').asInt(),
-  },
-  gpio: {
-    host: env.get('GPIO_HOST').default('localhost').asString(),
-    pins: {
-      power: env.get('GPIO_PINS_POWER').default(GPIOMapping.GPIO_14).asInt(),
-      light: env.get('GPIO_PINS_LIGHT').default(GPIOMapping.GPIO_15).asInt(),
-    },
-  },
-  ibus: {
-    interface: {
-      path: env.get('IBUS_INTERFACE_PATH').default('/dev/ttyUSB0').asString(),
-    },
-  },
-};
+dotenv.config();
+export const config = configSchema.parse(process.env);
