@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import each from 'jest-each';
+const each = require('jest-each');
 import { ascii2hex, ascii2paddedHex } from '@/ibus/message.js';
 
 const codepoints = Array.from(Array(96 + 32).keys())
