@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "npx tsc",
-    "start": "npm run build && node build/src/main.js",
-    "dev": "LOG_LEVEL=debug nodemon --inspect --watch src/ ./src/main.ts --exec \"npm run build && node --inspect build/src/main.js\" --verbose -e ts",
+    "start": "node dist/src/main.js",
+    "dev": "LOG_LEVEL=debug npx tsx watch src/main.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -17,10 +17,6 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/koa": "^3.0.0",
-    "@types/koa-bodyparser": "^5.0.2",
-    "@types/koa-json": "^2.0.23",
-    "@types/koa-router": "^7.4.8",
     "@types/latinize": "^0.2.18",
     "@types/log": "^6.3.3",
     "@types/node": "^24.7.2",
@@ -31,15 +27,15 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.5",
+    "dotenv": "^17.2.3",
     "env-var": "^7.5.0",
-    "koa": "^3.0.1",
-    "koa-bodyparser": "^4.4.1",
-    "koa-json": "^2.0.2",
-    "koa-router": "^14.0.0",
+    "hono": "^4.9.12",
     "latinize": "^2.0.0",
     "log": "^6.3.2",
     "log-node": "^8.0.3",
     "pigpio-client": "^1.5.2",
-    "serialport": "^12.0.0"
+    "serialport": "^12.0.0",
+    "zod": "^4.1.12"
   }
 }

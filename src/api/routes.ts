@@ -1,23 +1,23 @@
-import Router from 'koa-router';
 import Logger from '../lib/log.js';
 import gpio from '../gpio/index.js';
 import { GPIO, GPIOState } from '../types/index.js';
 import ibus from '../ibus/index.js';
+import { Hono } from 'hono';
 
 const context = 'api';
 const log = Logger.get(context);
-const router = new Router();
+const router = new Hono();
 
-router.get('/', async (ctx, next) => {
+router.get('/', (c) => {
   log.info('/');
-  ctx.body = 'hello world';
-  await next();
+  return c.text('hello world');
 });
 
-router.post('/power/:name/:state', async (ctx, next) => {
-  switch (ctx.params.name) {
+router.post('/power/:name/:state', (c) => {
+  const { name, state } = c.req.param();
+  switch (name) {
     case 'power':
-      switch (ctx.params.state) {
+      switch (state) {
         case 'on':
           gpio.emit(GPIO.Power, GPIOState.On, { context });
           break;
@@ -30,7 +30,7 @@ router.post('/power/:name/:state', async (ctx, next) => {
       break;
 
     case 'light':
-      switch (ctx.params.state) {
+      switch (state) {
         case 'on':
           gpio.emit(GPIO.Light, GPIOState.On, { context });
           break;
@@ -45,15 +45,14 @@ router.post('/power/:name/:state', async (ctx, next) => {
     default:
       break;
   }
-  ctx.body = 'updated';
-  await next();
+  return c.text('updated');
 });
 
-router.post('/ibus/message', async (ctx, next) => {
-  const msg = (ctx.request.body as any).split(',').map((h: string) => parseInt(h, 16));
+router.post('/ibus/message', async (c) => {
+  const body = await c.req.text();
+  const msg = body.split(',').map((h: string) => parseInt(h, 16));
   ibus.sendMessage(msg[0], msg[1], msg.slice(2));
-  ctx.body = `Sent message: ${msg}`;
-  await next();
+  return c.text(`Sent message: ${msg}`);
 });
 
 export default router;

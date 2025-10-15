@@ -1,30 +1,42 @@
-import Koa from 'koa';
-import bodyParser from 'koa-bodyparser';
-import json from 'koa-json';
 import Logger from '../lib/log.js';
 import { config } from '../config.js';
-import router from './routes.js';
+import routes from './routes.js';
 import { EventBus } from '../eventbus/index.js';
+import { Hono } from 'hono';
+import { serve, type ServerType } from '@hono/node-server';
+import { logger as honoLogger } from 'hono/logger';
+import { compress } from 'hono/compress';
 
 const namespace = 'api';
 const log = Logger.get(namespace);
-const app = new Koa();
+const app = new Hono();
+
+let server: ServerType | null;
 
 const init = async (eventBus: EventBus) => {
-  const port = config.api.port;
+  app.use(compress());
+  app.use(honoLogger());
 
-  app.use(bodyParser());
-  app.use(json());
-  app.use(router.routes()).use(router.allowedMethods());
+  app.route('/', routes);
 
-  app.listen(port, () => {
-    log.notice(`API server started on port ${port}`);
-  });
+  server = serve(
+    {
+      fetch: app.fetch,
+      port: config.api.port,
+    },
+    (info) => {
+      log.notice(`API server started on port ${info.port}`);
+    },
+  );
 };
 
 const term = async () => {
-  // TODO shut down koa
   log.notice('Shutting down API server');
+  if (server) {
+    server.close();
+    server = null;
+    log.notice('API server shut down');
+  }
 };
 
 export default {
