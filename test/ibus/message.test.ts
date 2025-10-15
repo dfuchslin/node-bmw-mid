@@ -18,8 +18,7 @@ describe('ascii2hex', () => {
   test.each(codepoints)(
     "character '%s' should be converted to its correct codepoint=%s",
     (...args: (string | number)[]) => {
-      const char = args[0] as string;
-      const expected = args[1] as number;
+      const [char, expected] = args as [string, number];
       expect(ascii2hex(char)).toStrictEqual(Buffer.from([expected]));
     },
   );
