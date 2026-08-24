@@ -50,6 +50,11 @@ declare module 'node-roon-api-transport' {
       value: number,
       cb?: (error: string | false) => void,
     ): void;
+    control(
+      zoneOrOutput: string | Zone | Output,
+      control: 'play' | 'pause' | 'playpause' | 'stop' | 'previous' | 'next',
+      cb?: (error: string | false) => void,
+    ): void;
   }
 }
 

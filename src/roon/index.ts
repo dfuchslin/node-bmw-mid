@@ -13,6 +13,7 @@ const init = async (eventBus: EventBus) => {
   eventBus.on(PlaybackEvent.VolumeChangeRequested, ({ steps }: VolumeChangeRequestPayload) => {
     client?.changeVolume(steps);
   });
+  eventBus.on(PlaybackEvent.PlayPauseRequested, () => client?.playPause());
 
   try {
     client = new RoonClient({

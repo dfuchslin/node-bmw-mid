@@ -90,6 +90,17 @@ export class RoonClient {
     });
   }
 
+  playPause(): void {
+    if (!this.transport || !this.matchedZoneId) {
+      log.warn('Cannot toggle play/pause: not paired with zone "%s" yet', this.zoneName);
+      return;
+    }
+
+    this.transport.control(this.matchedZoneId, 'playpause', (err) => {
+      if (err) log.error('control(playpause) failed: %s', err);
+    });
+  }
+
   stop(): void {
     this.roonApi?.stop_discovery();
   }
