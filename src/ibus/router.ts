@@ -6,6 +6,7 @@ import * as AllDevices from '../ibus/devices/index.js';
 import { deviceStatus } from '../ibus/message.js';
 import { EventBus } from '../eventbus/index.js';
 import cdcnew from '../ibus/devices/IbusDevice.js';
+import RadDevice from '../ibus/devices/RAD.js';
 
 const context = 'ibus-router';
 const log = Logger.get(context);
@@ -29,6 +30,9 @@ const init = async (config: { ibusInterface: IbusInterface; eventBus: EventBus }
 
   const CDCNEW = new cdcnew(config);
   registeredDevices[CDCNEW.id] = CDCNEW;
+
+  const rad = new RadDevice(config);
+  registeredDevices[rad.id] = rad;
 
   Object.values<Device>(registeredDevices).forEach((device) => device.init(config.ibusInterface));
 };

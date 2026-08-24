@@ -12,6 +12,9 @@ const configSchema = z
     GPIO_PINS_POWER: z.coerce.number().prefault(14),
     GPIO_PINS_LIGHT: z.coerce.number().prefault(15),
     IBUS_INTERFACE_PATH: z.string().prefault('/dev/ttyUSB0'),
+    ROON_ZONE_NAME: z.string(),
+    ROON_EXTENSION_EMAIL: z.string(),
+    ROON_PERSIST_PATH: z.string().prefault('./roon-config.json'),
   })
   .transform((val) => ({
     api: {
@@ -28,6 +31,11 @@ const configSchema = z
       interface: {
         path: val.IBUS_INTERFACE_PATH,
       },
+    },
+    roon: {
+      zoneName: val.ROON_ZONE_NAME,
+      extensionEmail: val.ROON_EXTENSION_EMAIL,
+      persistPath: val.ROON_PERSIST_PATH,
     },
   }));
 

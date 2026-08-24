@@ -4,9 +4,9 @@ import Logger from '../../lib/log.js';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types/index.js';
 import { EventBus } from '../../eventbus/index.js';
 
-type IbusDeviceConfig = { ibusInterface: IbusInterface; eventBus: EventBus };
+export type IbusDeviceConfig = { ibusInterface: IbusInterface; eventBus: EventBus };
 
-abstract class IbusDevice implements Device {
+export abstract class IbusDevice implements Device {
   public readonly id: IbusDeviceId;
   protected readonly context: string;
   protected readonly log: typeof Logger;

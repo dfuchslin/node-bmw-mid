@@ -2,6 +2,7 @@ import { EventBus } from './eventbus/index.js';
 import api from './api/index.js';
 import gpio from './gpio/index.js';
 import ibus from './ibus/index.js';
+import roon from './roon/index.js';
 import { GPIO, GPIOState } from './types/gpio/index.js';
 import Logger from './lib/log.js';
 
@@ -32,6 +33,7 @@ const init = async () => {
   const eventBus = new EventBus();
   await api.init(eventBus);
   await gpio.init(eventBus);
+  await roon.init(eventBus);
   await ibus.init(eventBus);
 
   gpio.emit(GPIO.Power, GPIOState.On, { context });
@@ -43,6 +45,7 @@ const term = async () => {
   await ibus.term();
   gpio.emit(GPIO.Power, GPIOState.Off, { context });
 
+  await roon.term();
   await api.term();
   await gpio.term();
   process.exit();

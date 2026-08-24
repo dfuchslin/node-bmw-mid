@@ -1,34 +1,13 @@
-import { ascii2paddedHex, buildMessage } from '../../ibus/message.js';
-import { IbusInterface } from '../../lib/ibus/index.js';
-import Logger from '../../lib/log.js';
-import { Device, FullIbusMessage, IbusDeviceId } from '../../types/index.js';
-
-const id = IbusDeviceId.RAD;
-const context = IbusDeviceId[id].toLowerCase();
-const log = Logger.get(context);
-let ibusInterface: IbusInterface;
-
-let main_volume = 0;
-
-const init = (_ibusInterface: IbusInterface) => {
-  log.notice('init');
-  ibusInterface = _ibusInterface;
-};
-
-const term = () => {
-  log.notice('term');
-};
-
-const parseMessage = (message: FullIbusMessage) => {
-  switch (message.msg[0]) {
-    case 0x32: {
-      handleVolume(message);
-      break;
-    }
-    default:
-      log.warn('Unhandled message!', message.msg);
-  }
-};
+import { ascii2paddedHex, buildMessage, utf82paddedHex } from '../message.js';
+import {
+  FullIbusMessage,
+  IbusDeviceId,
+  NowPlaying,
+  PlaybackEvent,
+  PlaybackVolume,
+  PlaybackZoneState,
+} from '../../types/index.js';
+import { IbusDevice, IbusDeviceConfig } from './IbusDevice.js';
 
 const createProgressBars = (width: number) => {
   const result: number[][] = [];
@@ -44,149 +23,127 @@ const createProgressBars = (width: number) => {
   return result;
 };
 const volumeProgressBars = createProgressBars(10);
-let volumeTimestamp = 0;
 
-const handleVolume = (message: FullIbusMessage) => {
-  // Broadcast: Volume control
-  // data.msg[1] -
-  // -1 : 10
-  // -2 : 20
-  // -3 : 30
-  // -4 : 40
-  // -5 : 50
-  // +1 : 11
-  // +2 : 21
-  // +3 : 31
-  // +4 : 41
-  // +5 : 51
+class RAD extends IbusDevice {
+  private lastZoneState: PlaybackZoneState | undefined;
+  private volumeTimestamp = 0;
+  private main_volume: PlaybackVolume = { value: 0, min: 0, max: 100, isMuted: false };
 
-  const volume = message.msg[1];
-
-  // Determine volume change direction
-  const direction = volume & 0x01 && true ? '+' : '-';
-  const volume_inc = Math.floor(volume / 0x10);
-
-  switch (direction) {
-    case '+':
-      main_volume = main_volume + volume_inc;
-      break;
-    case '-':
-      main_volume = main_volume - volume_inc;
+  constructor(config: IbusDeviceConfig) {
+    super(IbusDeviceId.RAD, config);
   }
 
-  // Disregard min and max volume levels
-  if (main_volume < 1) main_volume = 0;
-  if (main_volume > 100) main_volume = 100;
+  init(): void {
+    this.log.notice('init');
+    this.eventBus.on(PlaybackEvent.ZoneUpdated, (state: PlaybackZoneState) => this.handleZoneUpdate(state), {
+      context: this.context,
+    });
+  }
 
-  let progressBarIndex = Math.floor((main_volume / 100) * volumeProgressBars.length);
-  if (progressBarIndex >= volumeProgressBars.length) progressBarIndex = volumeProgressBars.length - 1;
-  if (progressBarIndex < 0) progressBarIndex = 0;
+  term(): void {
+    this.log.notice('term');
+  }
 
-  log.notice(`volume ${direction} ${volume_inc} (${volume}) --> ${main_volume}`);
-
-  // Upper left - 11 char radio display
-  let msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${main_volume}`, 11)]);
-  ibusInterface.sendMessage(buildMessage(id, message.src, msg));
-
-  // Upper right - 20 char obc display
-  msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([
-    msg,
-    Buffer.from([0xc6, 0xc8, 0x20]),
-    Buffer.from(volumeProgressBars[progressBarIndex]),
-    Buffer.from(new Array(7).fill(0x20)),
-  ]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, message.src, msg));
-
-  volumeTimestamp = new Date().getTime();
-  setTimeout(() => {
-    if (new Date().getTime() - volumeTimestamp >= 5_000) {
-      clearScreen();
+  parseMessage(message: FullIbusMessage): void {
+    switch (message.msg[0]) {
+      case 0x32: {
+        this.handleVolume(message);
+        break;
+      }
+      default:
+        this.log.warn('Unhandled message!', message.msg);
     }
-  }, 5_000);
+  }
 
-  /*
-  // Left side menu
-  msg = Buffer.from([0x21, 0x00, 0x15, 0x20]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar)]);
-  ibusInterface.sendMessage(buildMessage(id, message.src, msg));
+  private handleVolume(message: FullIbusMessage): void {
+    // Broadcast: Volume control
+    // data.msg[1] -
+    // -1 : 10
+    // -2 : 20
+    // -3 : 30
+    // -4 : 40
+    // -5 : 50
+    // +1 : 11
+    // +2 : 21
+    // +3 : 31
+    // +4 : 41
+    // +5 : 51
 
-  // Right side menu
-  msg = Buffer.from([0x21, 0x00, 0x15, 0x06]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar), Buffer.from([0x05])]);
-  msg = Buffer.concat([msg, Buffer.from(solidProgressBar)]);
-  ibusInterface.sendMessage(buildMessage(id, message.src, msg));
-  */
+    const volume = message.msg[1];
 
-  /*
-  // node-ibus-mediacenterMID-master MidDevice.js (puts "MP3" right aligned in the last button to the right)
-  msg = Buffer.from([0x21, 0x40, 0x00, 0x09, 0x05, 0x05, 0x4d, 0x50, 0x33]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
-  // displays "^ find v' 'ok  back' 'play   q' in the left buttons
-  msg = Buffer.concat([
-    Buffer.from([0x21, 0x40, 0x00, 0x40, 0x06]),
-    ascii2paddedHex('^ FIND ', 7),
-    Buffer.from([0xc1, 0x06]),
-    ascii2paddedHex('OK  BACK', 8),
-    Buffer.from([0x20, 0x06]),
-    ascii2paddedHex('PLAY   Q', 8),
-  ]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
-  */
+    // Determine volume change direction
+    const direction = volume & 0x01 && true ? '+' : '-';
+    const volume_inc = Math.floor(volume / 0x10);
+    const steps = direction === '+' ? volume_inc : -volume_inc;
 
-  /*
-  // nodejs-ibus RadioEventListener.js
-  // left top '   {{{{{{{'
-  msg = Buffer.concat([
-    Buffer.from([0x23, 0x00, 0x22]),
-    Buffer.alloc(3, '123', 'hex'),
-    Buffer.alloc(7, Number(123).toString(16), 'hex'),
-  ]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
+    const current = this.lastZoneState?.volume ?? this.main_volume;
+    let nextValue = current.value + steps;
+    if (nextValue < current.min) nextValue = current.min;
+    if (nextValue > current.max) nextValue = current.max;
+    this.main_volume = { value: nextValue, min: current.min, max: current.max, isMuted: current.isMuted };
 
-  // right top blanked out
-  msg = Buffer.concat([
-    Buffer.from([0x23, 0xe0, 0x80]),
-    Buffer.alloc(22, Number(456).toString(16), 'hex'),
-  ]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
+    this.log.notice(`volume ${direction} ${volume_inc} (${volume}) --> ${nextValue}`);
 
-  // clear screen
-  msg = new Buffer([0x23, 0xe0, 0x20]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
-  */
-};
+    this.renderVolumeOverlay(message.src, this.main_volume);
 
-const clearScreen = () => {
-  /*
-  // Upper left - 11 char radio display
-  let msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([msg, Buffer.from(new Array(11).fill(0x20))]);
-  ibusInterface.sendMessage(buildMessage(id, IbusDeviceId.MID, msg));
+    this.eventBus.emit(PlaybackEvent.VolumeChangeRequested, { steps }, { context: this.context });
 
-  // Upper right - 20 char obc display
-  msg = Buffer.from([0x23, 0x40, 0x20]);
-  msg = Buffer.concat([msg, Buffer.from(new Array(20).fill(0x20))]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
-*/
+    this.volumeTimestamp = Date.now();
+    setTimeout(() => {
+      if (Date.now() - this.volumeTimestamp >= 5_000) {
+        this.lastZoneState?.nowPlaying ? this.renderNowPlaying(this.lastZoneState.nowPlaying) : this.clearScreen();
+      }
+    }, 5_000);
+  }
 
-  let msg = new Buffer([0x23, 0xe0, 0x20]);
-  ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
-};
+  private handleZoneUpdate(state: PlaybackZoneState): void {
+    this.lastZoneState = state;
+    if (Date.now() - this.volumeTimestamp < 5_000) return; // a volume overlay is currently showing — don't stomp it
+    state.nowPlaying ? this.renderNowPlaying(state.nowPlaying) : this.clearScreen();
+    // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
+  }
 
-export const RAD: Device = {
-  id,
-  init,
-  term,
-  parseMessage,
-};
+  private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {
+    const range = volume.max - volume.min || 1;
+    const pct = (volume.value - volume.min) / range;
+    const displayValue = Math.round(pct * 100);
+
+    let progressBarIndex = Math.floor(pct * volumeProgressBars.length);
+    if (progressBarIndex >= volumeProgressBars.length) progressBarIndex = volumeProgressBars.length - 1;
+    if (progressBarIndex < 0) progressBarIndex = 0;
+
+    // Upper left - 11 char radio display
+    let msg = Buffer.from([0x23, 0x40, 0x20]);
+    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}`, 11)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
+
+    // Upper right - 20 char obc display
+    msg = Buffer.from([0x23, 0x40, 0x20]);
+    msg = Buffer.concat([
+      msg,
+      Buffer.from([0xc6, 0xc8, 0x20]),
+      Buffer.from(volumeProgressBars[progressBarIndex]),
+      Buffer.from(new Array(7).fill(0x20)),
+    ]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, dstId, msg));
+  }
+
+  private renderNowPlaying(nowPlaying: NowPlaying): void {
+    // Upper left - 11 char radio display
+    let msg = Buffer.from([0x23, 0x40, 0x20]);
+    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.title, 11)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+
+    // Upper right - 20 char obc display
+    msg = Buffer.from([0x23, 0x40, 0x20]);
+    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.artist, 20)]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
+  }
+
+  private clearScreen(): void {
+    const msg = Buffer.from([0x23, 0xe0, 0x20]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
+  }
+}
+
+export default RAD;
