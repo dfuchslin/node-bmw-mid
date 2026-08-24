@@ -27,7 +27,6 @@ const volumeProgressBars = createProgressBars(10);
 class RAD extends IbusDevice {
   private lastZoneState: PlaybackZoneState | undefined;
   private volumeTimestamp = 0;
-  private main_volume: PlaybackVolume = { value: 0, min: 0, max: 100, isMuted: false };
 
   constructor(config: IbusDeviceConfig) {
     super(IbusDeviceId.RAD, config);
@@ -76,17 +75,21 @@ class RAD extends IbusDevice {
     const volume_inc = Math.floor(volume / 0x10);
     const steps = direction === '+' ? volume_inc : -volume_inc;
 
-    const current = this.lastZoneState?.volume ?? this.main_volume;
-    let nextValue = current.value + steps;
-    if (nextValue < current.min) nextValue = current.min;
-    if (nextValue > current.max) nextValue = current.max;
-    this.main_volume = { value: nextValue, min: current.min, max: current.max, isMuted: current.isMuted };
-
-    this.log.notice(`volume ${direction} ${volume_inc} (${volume}) --> ${nextValue}`);
-
-    this.renderVolumeOverlay(message.src, this.main_volume);
+    this.log.notice(`volume ${direction} ${volume_inc} (${volume})`);
 
     this.eventBus.emit(PlaybackEvent.VolumeChangeRequested, { steps }, { context: this.context });
+
+    // Only render an optimistic overlay once we know Roon's real min/max/value for this zone —
+    // never assume a scale (e.g. dB zones aren't 0-100).
+    const current = this.lastZoneState?.volume;
+    if (current) {
+      let nextValue = current.value + steps;
+      if (nextValue < current.min) nextValue = current.min;
+      if (nextValue > current.max) nextValue = current.max;
+      const nudged: PlaybackVolume = { ...current, value: nextValue };
+      this.lastZoneState = { ...this.lastZoneState, volume: nudged } as PlaybackZoneState;
+      this.renderVolumeOverlay(message.src, nudged);
+    }
 
     this.volumeTimestamp = Date.now();
     setTimeout(() => {
@@ -106,15 +109,16 @@ class RAD extends IbusDevice {
   private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {
     const range = volume.max - volume.min || 1;
     const pct = (volume.value - volume.min) / range;
-    const displayValue = Math.round(pct * 100);
 
     let progressBarIndex = Math.floor(pct * volumeProgressBars.length);
     if (progressBarIndex >= volumeProgressBars.length) progressBarIndex = volumeProgressBars.length - 1;
     if (progressBarIndex < 0) progressBarIndex = 0;
 
+    const displayValue = Math.round(volume.value).toString().padStart(3, ' ');
+
     // Upper left - 11 char radio display
     let msg = Buffer.from([0x23, 0x40, 0x20]);
-    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}`, 11)]);
+    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}db`, 11)]);
     this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
 
     // Upper right - 20 char obc display
