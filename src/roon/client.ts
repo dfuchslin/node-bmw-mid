@@ -11,7 +11,7 @@ import Logger from '../lib/log.js';
 import { PlaybackZoneState } from '../types/index.js';
 import { normalizeZone } from './zone.js';
 
-const EXTENSION_ID = 'com.fuechslin.node-bmw-mid';
+const EXTENSION_ID = 'com.gyttja.node-bmw-mid';
 const DISPLAY_NAME = 'BMW MID';
 const DISPLAY_VERSION = '0.0.1';
 const PUBLISHER = 'David Füchslin';
