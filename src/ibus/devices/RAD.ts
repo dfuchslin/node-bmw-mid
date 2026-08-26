@@ -51,10 +51,34 @@ const volumeProgressBars = createProgressBars(10);
 
 const SYMBOL_PAUSE = 0xbe;
 const SYMBOL_PLAY = 0xbc;
+const SYMBOL_LOADING = 0xc3;
+
+const BUTTON_ROW_SECTIONS = 6;
+const BUTTON_HALF_WIDTH = 4;
+const BLANK_BUTTON_HALF = Buffer.alloc(BUTTON_HALF_WIDTH, 0x20);
+
+// Joins 6 section halves (4 bytes each) with the 0x05 separator the MID expects
+// between segments in a batched menu-row write (verified against docs/MID.js's
+// refresh_text(), which sends button_1..6 and button_7..12 this way).
+const joinButtonRowHalves = (halves: Buffer[]): Buffer => {
+  const parts: Buffer[] = [];
+  halves.forEach((half, i) => {
+    if (i > 0) parts.push(Buffer.from([0x05]));
+    parts.push(half);
+  });
+  return Buffer.concat(parts);
+};
 
 class RAD extends IbusDevice {
   private lastZoneState: PlaybackZoneState | undefined;
   private volumeTimestamp = 0;
+  private loadingAnimation: ReturnType<typeof setInterval> | undefined;
+
+  // Current content of each button-row section, 0-indexed (section 1 = index 0).
+  // Unified state so any single section update (play/pause symbol, future media
+  // info, etc.) re-sends the full row without clobbering the other sections.
+  private buttonRowLeft: Buffer[] = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+  private buttonRowRight: Buffer[] = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
 
   constructor(config: IbusDeviceConfig) {
     super(IbusDeviceId.RAD, config);
@@ -69,6 +93,7 @@ class RAD extends IbusDevice {
 
   term(): void {
     this.log.notice('term');
+    if (this.loadingAnimation) clearInterval(this.loadingAnimation);
   }
 
   parseMessage(message: FullIbusMessage): void {
@@ -156,7 +181,7 @@ class RAD extends IbusDevice {
 
   private handleZoneUpdate(state: PlaybackZoneState): void {
     this.lastZoneState = state;
-    this.renderPlayPauseButton(state.state);
+    this.updatePlayPauseButton(state.state);
     if (Date.now() - this.volumeTimestamp < 5_000) return; // top-row overlay guard, unrelated to the button row
     state.nowPlaying ? this.renderNowPlaying(state.nowPlaying) : this.clearScreen();
     // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
@@ -200,13 +225,54 @@ class RAD extends IbusDevice {
     this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
   }
 
-  private renderPlayPauseButton(state: PlaybackZoneState['state']): void {
-    const symbol = state === 'playing' ? SYMBOL_PAUSE : SYMBOL_PLAY;
-    const msg = Buffer.concat([
-      Buffer.from([0x21, 0x40, 0x00, 0x40, 0x06]),
-      Buffer.from([symbol, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20]), // "X   " + right button half, blank
-    ]);
-    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
+  private updatePlayPauseButton(state: PlaybackZoneState['state']): void {
+    if (state === 'loading') {
+      if (this.loadingAnimation) return; // already animating
+
+      let showLoadingSymbol = true;
+      this.renderPlayPauseSymbol(SYMBOL_LOADING);
+      this.loadingAnimation = setInterval(() => {
+        showLoadingSymbol = !showLoadingSymbol;
+        this.renderPlayPauseSymbol(showLoadingSymbol ? SYMBOL_LOADING : SYMBOL_PLAY);
+      }, 1_000);
+      return;
+    }
+
+    if (this.loadingAnimation) {
+      clearInterval(this.loadingAnimation);
+      this.loadingAnimation = undefined;
+    }
+
+    this.renderPlayPauseSymbol(state === 'playing' ? SYMBOL_PAUSE : SYMBOL_PLAY);
+  }
+
+  private renderPlayPauseSymbol(symbol: number): void {
+    this.setButtonSection(1, { left: Buffer.from([symbol, 0x20, 0x20, 0x20]) });
+  }
+
+  // Sets one button-row section's left and/or right 4-char half (bytes, not just ASCII —
+  // symbols like the play/pause glyphs aren't text) and re-sends the full row. `section`
+  // is 1-indexed (1-6), matching MidButtonId's section numbering.
+  private setButtonSection(section: number, halves: { left?: Buffer; right?: Buffer }): void {
+    const index = section - 1;
+    if (halves.left) this.buttonRowLeft[index] = halves.left;
+    if (halves.right) this.buttonRowRight[index] = halves.right;
+    this.sendButtonRow();
+  }
+
+  private sendButtonRow(): void {
+    // Confirmed via hardware test: the physical row reads section-by-section (left half
+    // then right half of each section), NOT all-lefts-then-all-rights. Sections 1-3 go in
+    // the "left" message, sections 4-6 in the "right" message — matching docs/MID.js's
+    // "Menu - First 3 boxes" / "Menu - Last 3 boxes" comment, which this confirms.
+    const sectionValues = (sectionIndexes: number[]): Buffer[] =>
+      sectionIndexes.flatMap((i) => [this.buttonRowLeft[i], this.buttonRowRight[i]]);
+
+    const left = Buffer.concat([Buffer.from([0x21, 0x00, 0x15, 0x20]), joinButtonRowHalves(sectionValues([0, 1, 2]))]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, left));
+
+    const right = Buffer.concat([Buffer.from([0x21, 0x00, 0x15, 0x06]), joinButtonRowHalves(sectionValues([3, 4, 5]))]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, right));
   }
 
   private clearScreen(): void {
