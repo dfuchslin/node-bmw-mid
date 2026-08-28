@@ -1,6 +1,8 @@
 import { ascii2paddedHex, buildMessage, utf82paddedHex } from '../message.js';
 import {
   FullIbusMessage,
+  GPIO,
+  GPIOState,
   IbusDeviceId,
   NowPlaying,
   PlaybackEvent,
@@ -8,6 +10,7 @@ import {
   PlaybackZoneState,
 } from '../../types/index.js';
 import { IbusDevice, IbusDeviceConfig } from './IbusDevice.js';
+import gpio from '../../gpio/index.js';
 
 // Menu-row button ids (msg[3] low nibble on a 0x31 broadcast, src:MID dst:RAD).
 // Cross-referenced against three independent sources (kmalinich/node-bmw-client's
@@ -57,6 +60,10 @@ const BUTTON_ROW_SECTIONS = 6;
 const BUTTON_HALF_WIDTH = 4;
 const BLANK_BUTTON_HALF = Buffer.alloc(BUTTON_HALF_WIDTH, 0x20);
 
+const RENDER_TICK_MS = 200;
+const VOLUME_OVERLAY_MS = 5_000;
+const LOADING_BLINK_MS = 1_000;
+
 // Joins 6 section halves (4 bytes each) with the 0x05 separator the MID expects
 // between segments in a batched menu-row write (verified against docs/MID.js's
 // refresh_text(), which sends button_1..6 and button_7..12 this way).
@@ -71,14 +78,27 @@ const joinButtonRowHalves = (halves: Buffer[]): Buffer => {
 
 class RAD extends IbusDevice {
   private lastZoneState: PlaybackZoneState | undefined;
-  private volumeTimestamp = 0;
-  private loadingAnimation: ReturnType<typeof setInterval> | undefined;
+  private renderTick: ReturnType<typeof setInterval> | undefined;
 
-  // Current content of each button-row section, 0-indexed (section 1 = index 0).
-  // Unified state so any single section update (play/pause symbol, future media
-  // info, etc.) re-sends the full row without clobbering the other sections.
+  // Mirrors the backlight: when the knob's power button turns the light off, all
+  // rendering suspends (and the display is blanked once); turning it back on forces
+  // a full refresh of whatever should currently be showing.
+  private displayEnabled = true;
+
+  // Top row (text fields) desired state — a tick flushes this, not the handlers.
+  private topRowMode: 'volume' | 'now-playing' | 'blank' = 'blank';
+  private topRowDirty = false;
+  private volumeOverlayDst: IbusDeviceId = IbusDeviceId.MID;
+  private volumeOverlayUntil = 0;
+
+  // Button row (menu section content), 0-indexed (section 1 = index 0). Unified
+  // state so any single section update re-sends the full row without clobbering
+  // the other sections.
   private buttonRowLeft: Buffer[] = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
   private buttonRowRight: Buffer[] = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+  private buttonRowDirty = false;
+  private loadingBlinkPhase = false;
+  private lastBlinkToggle = 0;
 
   constructor(config: IbusDeviceConfig) {
     super(IbusDeviceId.RAD, config);
@@ -89,11 +109,20 @@ class RAD extends IbusDevice {
     this.eventBus.on(PlaybackEvent.ZoneUpdated, (state: PlaybackZoneState) => this.handleZoneUpdate(state), {
       context: this.context,
     });
+    this.eventBus.on(GPIO.Light, (state: GPIOState) => this.handleLightChange(state), { context: this.context });
+    this.renderTick = setInterval(() => this.tick(), RENDER_TICK_MS);
+
+    // Sync displayEnabled with the real backlight state at startup, rather than assuming
+    // it's on — read directly since this is a one-time boot query, not an ongoing signal.
+    gpio.isLightOn().then((isOn) => {
+      if (isOn === undefined) return; // GPIO not connected — keep the default (enabled)
+      this.handleLightChange(isOn ? GPIOState.On : GPIOState.Off);
+    });
   }
 
   term(): void {
     this.log.notice('term');
-    if (this.loadingAnimation) clearInterval(this.loadingAnimation);
+    if (this.renderTick) clearInterval(this.renderTick);
   }
 
   parseMessage(message: FullIbusMessage): void {
@@ -108,6 +137,62 @@ class RAD extends IbusDevice {
       }
       default:
         this.log.warn('Unhandled message!', message.msg);
+    }
+  }
+
+  // Backlight off -> blank the physical display once, then suspend the render loop
+  // entirely (handleVolume/handleZoneUpdate keep tracking state but stop marking
+  // anything dirty while disabled). Backlight on -> resume and force a full refresh.
+  private handleLightChange(state: GPIOState): void {
+    if (state === GPIOState.Off) {
+      if (!this.displayEnabled) return;
+      this.displayEnabled = false;
+      this.clearScreen();
+      this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+      this.buttonRowRight = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+      this.clearButtonRow();
+      this.eventBus.emit(PlaybackEvent.PauseRequested, undefined, { context: this.context });
+      return;
+    }
+
+    if (state === GPIOState.On) {
+      if (this.displayEnabled) return;
+      this.displayEnabled = true;
+      if (this.topRowMode !== 'volume') {
+        this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
+      }
+      this.topRowDirty = true;
+      this.updatePlayPauseSection();
+    }
+  }
+
+  // The single render loop: on a fixed cadence, checks whether any time-based
+  // transition (volume-overlay expiry, loading-symbol blink) is due, then flushes
+  // whatever's dirty. No other method sends bytes directly — everything else just
+  // updates desired state and marks it dirty.
+  private tick(): void {
+    if (!this.displayEnabled) return;
+
+    const now = Date.now();
+
+    if (this.topRowMode === 'volume' && now >= this.volumeOverlayUntil) {
+      this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
+      this.topRowDirty = true;
+    }
+
+    if (this.lastZoneState?.state === 'loading' && now - this.lastBlinkToggle >= LOADING_BLINK_MS) {
+      this.loadingBlinkPhase = !this.loadingBlinkPhase;
+      this.lastBlinkToggle = now;
+      this.updatePlayPauseSection();
+    }
+
+    if (this.topRowDirty) {
+      this.flushTopRow();
+      this.topRowDirty = false;
+    }
+    if (this.buttonRowDirty) {
+      this.flushButtonRow();
+      this.buttonRowDirty = false;
     }
   }
 
@@ -136,8 +221,8 @@ class RAD extends IbusDevice {
 
     this.eventBus.emit(PlaybackEvent.VolumeChangeRequested, { steps }, { context: this.context });
 
-    // Only render an optimistic overlay once we know the real min/max/value for this zone —
-    // never assume a scale (e.g. dB zones aren't 0-100).
+    // Only nudge/render an optimistic overlay once we know the real min/max/value for
+    // this zone — never assume a scale (e.g. dB zones aren't 0-100).
     const current = this.lastZoneState?.volume;
     if (current) {
       let nextValue = current.value + steps;
@@ -145,15 +230,14 @@ class RAD extends IbusDevice {
       if (nextValue > current.max) nextValue = current.max;
       const nudged: PlaybackVolume = { ...current, value: nextValue };
       this.lastZoneState = { ...this.lastZoneState, volume: nudged } as PlaybackZoneState;
-      this.renderVolumeOverlay(message.src, nudged);
     }
 
-    this.volumeTimestamp = Date.now();
-    setTimeout(() => {
-      if (Date.now() - this.volumeTimestamp >= 5_000) {
-        this.lastZoneState?.nowPlaying ? this.renderNowPlaying(this.lastZoneState.nowPlaying) : this.clearScreen();
-      }
-    }, 5_000);
+    if (this.displayEnabled) {
+      this.topRowMode = 'volume';
+      this.volumeOverlayDst = message.src;
+      this.volumeOverlayUntil = Date.now() + VOLUME_OVERLAY_MS;
+      this.topRowDirty = true;
+    }
   }
 
   private handleButtonPress(message: FullIbusMessage): void {
@@ -180,11 +264,56 @@ class RAD extends IbusDevice {
   }
 
   private handleZoneUpdate(state: PlaybackZoneState): void {
-    this.lastZoneState = state;
-    this.updatePlayPauseButton(state.state);
-    if (Date.now() - this.volumeTimestamp < 5_000) return; // top-row overlay guard, unrelated to the button row
-    state.nowPlaying ? this.renderNowPlaying(state.nowPlaying) : this.clearScreen();
-    // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
+    const enteringLoading = state.state === 'loading' && this.lastZoneState?.state !== 'loading';
+    this.lastZoneState = state; // keep tracking even while disabled, so re-enable shows fresh content
+
+    if (!this.displayEnabled) return;
+
+    if (enteringLoading) {
+      // Always start a fresh loading transition by showing the loading symbol immediately.
+      this.loadingBlinkPhase = true;
+      this.lastBlinkToggle = Date.now();
+    }
+    this.updatePlayPauseSection();
+
+    if (this.topRowMode !== 'volume') {
+      // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
+      this.topRowMode = state.nowPlaying ? 'now-playing' : 'blank';
+      this.topRowDirty = true;
+    }
+  }
+
+  private updatePlayPauseSection(): void {
+    const state = this.lastZoneState?.state;
+    const symbol =
+      state === 'loading'
+        ? this.loadingBlinkPhase
+          ? SYMBOL_LOADING
+          : SYMBOL_PLAY
+        : state === 'playing'
+          ? SYMBOL_PAUSE
+          : SYMBOL_PLAY;
+    this.setButtonSection(1, { left: Buffer.from([symbol, 0x20, 0x20, 0x20]) });
+  }
+
+  // Sets one button-row section's left and/or right 4-char half (bytes, not just ASCII —
+  // symbols like the play/pause glyphs aren't text) and marks the row dirty for the next
+  // tick. `section` is 1-indexed (1-6), matching MidButtonId's section numbering.
+  private setButtonSection(section: number, halves: { left?: Buffer; right?: Buffer }): void {
+    const index = section - 1;
+    if (halves.left) this.buttonRowLeft[index] = halves.left;
+    if (halves.right) this.buttonRowRight[index] = halves.right;
+    this.buttonRowDirty = true;
+  }
+
+  private flushTopRow(): void {
+    if (this.topRowMode === 'volume' && this.lastZoneState?.volume) {
+      this.renderVolumeOverlay(this.volumeOverlayDst, this.lastZoneState.volume);
+    } else if (this.topRowMode === 'now-playing' && this.lastZoneState?.nowPlaying) {
+      this.renderNowPlaying(this.lastZoneState.nowPlaying);
+    } else {
+      this.clearScreen();
+    }
   }
 
   private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {
@@ -225,42 +354,7 @@ class RAD extends IbusDevice {
     this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
   }
 
-  private updatePlayPauseButton(state: PlaybackZoneState['state']): void {
-    if (state === 'loading') {
-      if (this.loadingAnimation) return; // already animating
-
-      let showLoadingSymbol = true;
-      this.renderPlayPauseSymbol(SYMBOL_LOADING);
-      this.loadingAnimation = setInterval(() => {
-        showLoadingSymbol = !showLoadingSymbol;
-        this.renderPlayPauseSymbol(showLoadingSymbol ? SYMBOL_LOADING : SYMBOL_PLAY);
-      }, 1_000);
-      return;
-    }
-
-    if (this.loadingAnimation) {
-      clearInterval(this.loadingAnimation);
-      this.loadingAnimation = undefined;
-    }
-
-    this.renderPlayPauseSymbol(state === 'playing' ? SYMBOL_PAUSE : SYMBOL_PLAY);
-  }
-
-  private renderPlayPauseSymbol(symbol: number): void {
-    this.setButtonSection(1, { left: Buffer.from([symbol, 0x20, 0x20, 0x20]) });
-  }
-
-  // Sets one button-row section's left and/or right 4-char half (bytes, not just ASCII —
-  // symbols like the play/pause glyphs aren't text) and re-sends the full row. `section`
-  // is 1-indexed (1-6), matching MidButtonId's section numbering.
-  private setButtonSection(section: number, halves: { left?: Buffer; right?: Buffer }): void {
-    const index = section - 1;
-    if (halves.left) this.buttonRowLeft[index] = halves.left;
-    if (halves.right) this.buttonRowRight[index] = halves.right;
-    this.sendButtonRow();
-  }
-
-  private sendButtonRow(): void {
+  private flushButtonRow(): void {
     // Confirmed via hardware test: the physical row reads section-by-section (left half
     // then right half of each section), NOT all-lefts-then-all-rights. Sections 1-3 go in
     // the "left" message, sections 4-6 in the "right" message — matching docs/MID.js's
@@ -277,6 +371,14 @@ class RAD extends IbusDevice {
 
   private clearScreen(): void {
     const msg = Buffer.from([0x23, 0xe0, 0x20]);
+    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
+  }
+
+  // Dedicated button-row clear opcode (MID::clear() in docs/custom_radio_.../MID.cpp),
+  // not a content write — unlike flushButtonRow(), a single send of this doesn't keep
+  // the row's backlight active the way writing blank characters does.
+  private clearButtonRow(): void {
+    const msg = Buffer.from([0x21, 0x00, 0x04, 0x20]);
     this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, msg));
   }
 }
