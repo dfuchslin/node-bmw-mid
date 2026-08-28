@@ -64,6 +64,12 @@ const power = {
       await rpi_gpio.power.write(0);
     }
   },
+  read: async (): Promise<number | undefined> => {
+    if (isConnected && rpi_gpio?.power) {
+      return await rpi_gpio.power.read();
+    }
+    return undefined;
+  },
 };
 
 const light = {
@@ -76,6 +82,12 @@ const light = {
     if (isConnected && rpi_gpio?.light) {
       await rpi_gpio.light.write(0);
     }
+  },
+  read: async (): Promise<number | undefined> => {
+    if (isConnected && rpi_gpio?.light) {
+      return await rpi_gpio.light.read();
+    }
+    return undefined;
   },
 };
 

@@ -101,6 +101,19 @@ export class RoonClient {
     });
   }
 
+  pause(): void {
+    if (!this.transport || !this.matchedZoneId) {
+      log.warn('Cannot pause: not paired with zone "%s" yet', this.zoneName);
+      return;
+    }
+
+    // Unconditional pause (not the playpause toggle) — a no-op if already
+    // paused/stopped, so this can never accidentally start playback.
+    this.transport.control(this.matchedZoneId, 'pause', (err) => {
+      if (err) log.error('control(pause) failed: %s', err);
+    });
+  }
+
   stop(): void {
     this.roonApi?.stop_discovery();
   }

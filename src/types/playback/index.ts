@@ -1,6 +1,7 @@
 export enum PlaybackEvent {
   VolumeChangeRequested = 'playback:volume-change-requested',
   PlayPauseRequested = 'playback:play-pause-requested',
+  PauseRequested = 'playback:pause-requested',
   ZoneUpdated = 'playback:zone-updated',
 }
 
