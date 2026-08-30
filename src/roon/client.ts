@@ -14,7 +14,7 @@ import { normalizeZone } from './zone.js';
 const EXTENSION_ID = 'com.gyttja.node-bmw-mid';
 const DISPLAY_NAME = 'BMW MID';
 const DISPLAY_VERSION = '0.0.1';
-const PUBLISHER = 'David Füchslin';
+const PUBLISHER = 'gyttja';
 
 const context = 'roon-client';
 const log = Logger.get(context);
@@ -59,7 +59,7 @@ export class RoonClient {
   start(): void {
     this.roonApi = new RoonApi({
       extension_id: EXTENSION_ID,
-      display_name: DISPLAY_NAME,
+      display_name: `${DISPLAY_NAME} - ${this.zoneName}`,
       display_version: DISPLAY_VERSION,
       publisher: PUBLISHER,
       email: this.extensionEmail,
