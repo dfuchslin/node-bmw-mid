@@ -14,6 +14,7 @@ export interface PlaybackVolume {
   min: number;
   max: number;
   isMuted: boolean;
+  type: 'db' | 'number';
 }
 
 export interface NowPlaying {

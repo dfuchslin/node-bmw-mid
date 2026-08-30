@@ -9,7 +9,13 @@ export const normalizeZone = (zone: Zone): PlaybackZoneState => {
     state: zone.state,
     volume:
       volume?.value !== undefined && volume.min !== undefined && volume.max !== undefined
-        ? { value: volume.value, min: volume.min, max: volume.max, isMuted: volume.is_muted ?? false }
+        ? {
+            value: volume.value,
+            min: volume.min,
+            max: volume.max,
+            isMuted: volume.is_muted ?? false,
+            type: volume.type === 'db' ? 'db' : 'number',
+          }
         : null,
     nowPlaying: nowPlayingLines
       ? {

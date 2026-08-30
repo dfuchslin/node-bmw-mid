@@ -325,10 +325,11 @@ class RAD extends IbusDevice {
     if (progressBarIndex < 0) progressBarIndex = 0;
 
     const displayValue = Math.round(volume.value).toString().padStart(3, ' ');
+    const suffix = volume.type === 'db' ? 'dB' : '%';
 
     // Upper left - 11 char radio display
     let msg = Buffer.from([0x23, 0x40, 0x20]);
-    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}dB`, 11)]);
+    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}${suffix}`, 11)]);
     this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
 
     // Upper right - 20 char obc display
