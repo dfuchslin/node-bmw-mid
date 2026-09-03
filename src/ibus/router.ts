@@ -39,7 +39,7 @@ const init = async (config: { ibusInterface: IbusInterface; eventBus: EventBus }
 };
 
 const routeMessage = (message: FullIbusMessage) => {
-  log.notice(`routing message src:${IbusDeviceId[message.src]} dst:${IbusDeviceId[message.dst]} msg:`, message.msg);
+  log.debug(`routing message src:${IbusDeviceId[message.src]} dst:${IbusDeviceId[message.dst]} msg:`, message.msg);
 
   switch (message.msg[0]) {
     case 0x01: {
