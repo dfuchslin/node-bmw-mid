@@ -1,12 +1,19 @@
 import Logger from '../lib/log.js';
 import gpio from '../gpio/index.js';
-import { GPIO, GPIOState } from '../types/index.js';
+import { DisplayEvent, GPIO, GPIOState } from '../types/index.js';
 import ibus from '../ibus/index.js';
+import { EventBus } from '../eventbus/index.js';
 import { Hono } from 'hono';
 
 const context = 'api';
 const log = Logger.get(context);
 const router = new Hono();
+
+let sharedEventBus: EventBus | undefined;
+
+export const setEventBus = (eventBus: EventBus): void => {
+  sharedEventBus = eventBus;
+};
 
 router.get('/', (c) => {
   log.info('/');
@@ -42,6 +49,21 @@ router.post('/power/:name/:state', (c) => {
       }
       break;
 
+    default:
+      break;
+  }
+  return c.text('updated');
+});
+
+router.post('/pixeltest/:state', (c) => {
+  const { state } = c.req.param();
+  switch (state) {
+    case 'on':
+      sharedEventBus?.emit(DisplayEvent.PixelTestToggled, { enabled: true }, { context });
+      break;
+    case 'off':
+      sharedEventBus?.emit(DisplayEvent.PixelTestToggled, { enabled: false }, { context });
+      break;
     default:
       break;
   }

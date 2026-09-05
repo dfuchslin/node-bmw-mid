@@ -1,6 +1,6 @@
 import Logger from '../lib/log.js';
 import { config } from '../config.js';
-import routes from './routes.js';
+import routes, { setEventBus } from './routes.js';
 import { EventBus } from '../eventbus/index.js';
 import { Hono } from 'hono';
 import { serve, type ServerType } from '@hono/node-server';
@@ -14,6 +14,7 @@ const app = new Hono();
 let server: ServerType | null;
 
 const init = async (eventBus: EventBus) => {
+  setEventBus(eventBus);
   app.use(compress());
   app.use(honoLogger());
 

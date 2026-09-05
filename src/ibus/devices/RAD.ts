@@ -1,10 +1,12 @@
 import { ascii2paddedHex, buildMessage, utf82paddedHex } from '../message.js';
 import {
+  DisplayEvent,
   FullIbusMessage,
   GPIO,
   GPIOState,
   IbusDeviceId,
   NowPlaying,
+  PixelTestTogglePayload,
   PlaybackEvent,
   PlaybackVolume,
   PlaybackZoneState,
@@ -56,6 +58,9 @@ const SYMBOL_PAUSE = 0xbe;
 const SYMBOL_PLAY = 0xbc;
 const SYMBOL_LOADING = 0xc3;
 
+// Volume-knob fill levels for pixel test mode, index 0 (blank) .. 7 (fully filled).
+const PIXEL_LEVELS = [0x20, 0x5f, 0xb7, 0xb6, 0xb5, 0xb4, 0xb3, 0xb2];
+
 const BUTTON_ROW_SECTIONS = 6;
 const BUTTON_HALF_WIDTH = 4;
 const BLANK_BUTTON_HALF = Buffer.alloc(BUTTON_HALF_WIDTH, 0x20);
@@ -86,10 +91,15 @@ class RAD extends IbusDevice {
   private displayEnabled = true;
 
   // Top row (text fields) desired state — a tick flushes this, not the handlers.
-  private topRowMode: 'volume' | 'now-playing' | 'blank' = 'blank';
+  private topRowMode: 'volume' | 'now-playing' | 'blank' | 'pixeltest' = 'blank';
   private topRowDirty = false;
   private volumeOverlayDst: IbusDeviceId = IbusDeviceId.MID;
   private volumeOverlayUntil = 0;
+
+  // Pixel test mode: while active, the knob sweeps a fill level across the whole
+  // display instead of changing real volume (see handleVolume/adjustPixelTestLevel).
+  private pixelTestActive = false;
+  private pixelTestLevel = PIXEL_LEVELS.length - 1;
 
   // Button row (menu section content), 0-indexed (section 1 = index 0). Unified
   // state so any single section update re-sends the full row without clobbering
@@ -110,6 +120,11 @@ class RAD extends IbusDevice {
       context: this.context,
     });
     this.eventBus.on(GPIO.Light, (state: GPIOState) => this.handleLightChange(state), { context: this.context });
+    this.eventBus.on(
+      DisplayEvent.PixelTestToggled,
+      ({ enabled }: PixelTestTogglePayload) => this.handlePixelTestToggle(enabled),
+      { context: this.context },
+    );
     this.renderTick = setInterval(() => this.tick(), RENDER_TICK_MS);
 
     // Sync displayEnabled with the real backlight state at startup, rather than assuming
@@ -158,11 +173,17 @@ class RAD extends IbusDevice {
     if (state === GPIOState.On) {
       if (this.displayEnabled) return;
       this.displayEnabled = true;
-      if (this.topRowMode !== 'volume') {
+      if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
         this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
       }
       this.topRowDirty = true;
-      this.updatePlayPauseSection();
+      if (this.pixelTestActive) {
+        // Backlight-off cleared the screen/button row — redraw the fill level
+        // instead of the real play/pause section.
+        this.applyPixelTestLevel();
+      } else {
+        this.updatePlayPauseSection();
+      }
     }
   }
 
@@ -216,6 +237,11 @@ class RAD extends IbusDevice {
     const direction = volume & 0x01 && true ? '+' : '-';
     const volume_inc = Math.floor(volume / 0x10);
     const steps = direction === '+' ? volume_inc : -volume_inc;
+
+    if (this.pixelTestActive) {
+      this.adjustPixelTestLevel(steps);
+      return;
+    }
 
     this.log.notice(`volume ${direction} ${volume_inc} (${volume})`);
 
@@ -276,11 +302,55 @@ class RAD extends IbusDevice {
     }
     this.updatePlayPauseSection();
 
-    if (this.topRowMode !== 'volume') {
+    if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
       // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
       this.topRowMode = state.nowPlaying ? 'now-playing' : 'blank';
       this.topRowDirty = true;
     }
+  }
+
+  // Toggled by the /pixeltest/:state route via DisplayEvent.PixelTestToggled. While
+  // active, handleVolume() diverts the knob to adjustPixelTestLevel() instead of
+  // requesting a real volume change, so lastZoneState.volume is never touched here —
+  // the real volume is implicitly "restored" on exit simply because it was never
+  // changed in the first place.
+  private handlePixelTestToggle(enabled: boolean): void {
+    if (enabled) {
+      if (this.pixelTestActive) return;
+      this.pixelTestActive = true;
+      this.pixelTestLevel = PIXEL_LEVELS.length - 1; // start fully filled (0xb2)
+      this.topRowMode = 'pixeltest';
+      this.applyPixelTestLevel();
+      return;
+    }
+
+    if (!this.pixelTestActive) return;
+    this.pixelTestActive = false;
+    this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
+    this.topRowDirty = true;
+    this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+    this.buttonRowRight = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+    this.buttonRowDirty = true;
+    this.updatePlayPauseSection();
+  }
+
+  private adjustPixelTestLevel(steps: number): void {
+    let next = this.pixelTestLevel + steps;
+    if (next < 0) next = 0;
+    if (next > PIXEL_LEVELS.length - 1) next = PIXEL_LEVELS.length - 1;
+    this.pixelTestLevel = next;
+    this.applyPixelTestLevel();
+  }
+
+  // Fills the whole display (top rows + button row) with the current pixel-test
+  // level's fill character and marks everything dirty for the next tick.
+  private applyPixelTestLevel(): void {
+    const char = PIXEL_LEVELS[this.pixelTestLevel];
+    const half = Buffer.alloc(BUTTON_HALF_WIDTH, char);
+    this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => half);
+    this.buttonRowRight = Array.from({ length: BUTTON_ROW_SECTIONS }, () => half);
+    this.buttonRowDirty = true;
+    this.topRowDirty = true;
   }
 
   private updatePlayPauseSection(): void {
@@ -307,13 +377,31 @@ class RAD extends IbusDevice {
   }
 
   private flushTopRow(): void {
-    if (this.topRowMode === 'volume' && this.lastZoneState?.volume) {
+    if (this.topRowMode === 'pixeltest') {
+      this.renderPixelTestTopRows();
+    } else if (this.topRowMode === 'volume' && this.lastZoneState?.volume) {
       this.renderVolumeOverlay(this.volumeOverlayDst, this.lastZoneState.volume);
     } else if (this.topRowMode === 'now-playing' && this.lastZoneState?.nowPlaying) {
       this.renderNowPlaying(this.lastZoneState.nowPlaying);
     } else {
       this.clearScreen();
     }
+  }
+
+  // Full 32-char top row (11 + 21), both messages from a single source (RAD) —
+  // confirmed on hardware. Left field uses layout 0x00/flags 0x22; right field uses
+  // layout 0xe0/flags 0x80 ("Set cursor"), which continues from the left field
+  // instead of starting a new one, so the two together read as one uninterrupted line.
+  private renderPixelTestTopRows(): void {
+    const char = PIXEL_LEVELS[this.pixelTestLevel];
+
+    let msg = Buffer.from([0x23, 0x00, 0x22]);
+    msg = Buffer.concat([msg, Buffer.alloc(11, char)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+
+    msg = Buffer.from([0x23, 0xe0, 0x80]);
+    msg = Buffer.concat([msg, Buffer.alloc(21, char)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
   }
 
   private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {
@@ -327,32 +415,28 @@ class RAD extends IbusDevice {
     const displayValue = Math.round(volume.value).toString().padStart(3, ' ');
     const suffix = volume.type === 'db' ? 'dB' : '%';
 
-    // Upper left - 11 char radio display
-    let msg = Buffer.from([0x23, 0x40, 0x20]);
+    let msg = Buffer.from([0x23, 0x00, 0x22]);
     msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}${suffix}`, 11)]);
     this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
 
-    // Upper right - 20 char obc display
-    msg = Buffer.from([0x23, 0x40, 0x20]);
+    msg = Buffer.from([0x23, 0xe0, 0x80]);
     msg = Buffer.concat([
       msg,
       Buffer.from([0xc6, 0xc8, 0x20]),
       Buffer.from(volumeProgressBars[progressBarIndex]),
-      Buffer.from(new Array(7).fill(0x20)),
+      Buffer.from(new Array(8).fill(0x20)),
     ]);
-    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, dstId, msg));
+    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
   }
 
   private renderNowPlaying(nowPlaying: NowPlaying): void {
-    // Upper left - 11 char radio display
-    let msg = Buffer.from([0x23, 0x40, 0x20]);
+    let msg = Buffer.from([0x23, 0x00, 0x22]);
     msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.title, 11)]);
     this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
 
-    // Upper right - 20 char obc display
-    msg = Buffer.from([0x23, 0x40, 0x20]);
-    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.artist, 20)]);
-    this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.IKE, IbusDeviceId.MID, msg));
+    msg = Buffer.from([0x23, 0xe0, 0x80]);
+    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.artist, 21)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
   }
 
   private flushButtonRow(): void {
