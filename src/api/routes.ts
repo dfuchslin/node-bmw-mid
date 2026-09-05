@@ -70,6 +70,14 @@ router.post('/pixeltest/:state', (c) => {
   return c.text('updated');
 });
 
+router.post('/nowplaying-mode/:mode', (c) => {
+  const { mode } = c.req.param();
+  if (mode === 'scroll' || mode === 'alternating') {
+    sharedEventBus?.emit(DisplayEvent.NowPlayingModeChanged, { mode }, { context });
+  }
+  return c.text('updated');
+});
+
 router.post('/ibus/message', async (c) => {
   const body = await c.req.text();
   const msg = body.split(',').map((h: string) => parseInt(h, 16));

@@ -1,4 +1,4 @@
-import { ascii2paddedHex, buildMessage, utf82paddedHex } from '../message.js';
+import { ascii2paddedHex, buildMessage, utf82hex } from '../message.js';
 import {
   DisplayEvent,
   FullIbusMessage,
@@ -6,6 +6,8 @@ import {
   GPIOState,
   IbusDeviceId,
   NowPlaying,
+  NowPlayingMode,
+  NowPlayingModeChangedPayload,
   PixelTestTogglePayload,
   PlaybackEvent,
   PlaybackVolume,
@@ -13,6 +15,7 @@ import {
 } from '../../types/index.js';
 import { IbusDevice, IbusDeviceConfig } from './IbusDevice.js';
 import gpio from '../../gpio/index.js';
+import { config as appConfig } from '../../config.js';
 
 // Menu-row button ids (msg[3] low nibble on a 0x31 broadcast, src:MID dst:RAD).
 // Cross-referenced against three independent sources (kmalinich/node-bmw-client's
@@ -61,6 +64,16 @@ const SYMBOL_LOADING = 0xc3;
 // Volume-knob fill levels for pixel test mode, index 0 (blank) .. 7 (fully filled).
 const PIXEL_LEVELS = [0x20, 0x5f, 0xb7, 0xb6, 0xb5, 0xb4, 0xb3, 0xb2];
 
+// The confirmed-working top-row field widths (see renderNowPlaying/renderVolumeOverlay/
+// renderPixelTestTopRows) — 11 left + 21 right, both messages from RAD, read together
+// as one uninterrupted 32-char line.
+const TOP_LEFT_WIDTH = 11;
+const TOP_RIGHT_WIDTH = 21;
+const TOP_ROW_WIDTH = TOP_LEFT_WIDTH + TOP_RIGHT_WIDTH;
+
+const SCROLL_STEP_CHARS = 1;
+const SCROLL_HOLD_MS = 2_000; // pause at the start and at the end of each scroll loop
+
 const BUTTON_ROW_SECTIONS = 6;
 const BUTTON_HALF_WIDTH = 4;
 const BLANK_BUTTON_HALF = Buffer.alloc(BUTTON_HALF_WIDTH, 0x20);
@@ -101,6 +114,25 @@ class RAD extends IbusDevice {
   private pixelTestActive = false;
   private pixelTestLevel = PIXEL_LEVELS.length - 1;
 
+  // Which now-playing display style is active — set from config at startup, and
+  // switchable live via the /nowplaying-mode/:mode route (DisplayEvent.NowPlayingModeChanged).
+  private nowPlayingMode: NowPlayingMode = appConfig.mid.nowPlayingMode;
+
+  // "artist <sep> title" scroll state. nowPlayingScrollKey tracks what the buffer was
+  // last built from, so unrelated zone updates (volume/state changes) don't reset the
+  // scroll position — only an actual artist/title change does.
+  private nowPlayingScrollKey = '';
+  private nowPlayingScrollText = Buffer.alloc(0);
+  private nowPlayingScrollOffset = 0;
+  private nowPlayingScrollHoldUntil = 0;
+
+  // Alternating artist/title state: which field is showing, when its slot began, and
+  // (only relevant once past the slot's halfway point) how far it's scrolled — always
+  // restarts from 0 the next time that field's turn comes around.
+  private alternatingField: 'artist' | 'title' = 'artist';
+  private alternatingFieldStartedAt = 0;
+  private alternatingScrollOffset = 0;
+
   // Button row (menu section content), 0-indexed (section 1 = index 0). Unified
   // state so any single section update re-sends the full row without clobbering
   // the other sections.
@@ -123,6 +155,11 @@ class RAD extends IbusDevice {
     this.eventBus.on(
       DisplayEvent.PixelTestToggled,
       ({ enabled }: PixelTestTogglePayload) => this.handlePixelTestToggle(enabled),
+      { context: this.context },
+    );
+    this.eventBus.on(
+      DisplayEvent.NowPlayingModeChanged,
+      ({ mode }: NowPlayingModeChangedPayload) => this.handleNowPlayingModeChange(mode),
       { context: this.context },
     );
     this.renderTick = setInterval(() => this.tick(), RENDER_TICK_MS);
@@ -205,6 +242,41 @@ class RAD extends IbusDevice {
       this.loadingBlinkPhase = !this.loadingBlinkPhase;
       this.lastBlinkToggle = now;
       this.updatePlayPauseSection();
+    }
+
+    if (
+      this.topRowMode === 'now-playing' &&
+      this.nowPlayingMode === 'scroll' &&
+      this.nowPlayingScrollText.length > TOP_ROW_WIDTH &&
+      now >= this.nowPlayingScrollHoldUntil
+    ) {
+      const maxOffset = this.nowPlayingScrollText.length - TOP_ROW_WIDTH;
+      this.nowPlayingScrollOffset =
+        this.nowPlayingScrollOffset >= maxOffset ? 0 : Math.min(this.nowPlayingScrollOffset + SCROLL_STEP_CHARS, maxOffset);
+      this.nowPlayingScrollHoldUntil =
+        this.nowPlayingScrollOffset === 0 || this.nowPlayingScrollOffset === maxOffset ? now + SCROLL_HOLD_MS : now;
+      this.topRowDirty = true;
+    }
+
+    if (this.topRowMode === 'now-playing' && this.nowPlayingMode === 'alternating' && this.lastZoneState?.nowPlaying) {
+      const durationMs = appConfig.mid.nowPlayingAlternateSeconds * 1000;
+      const elapsed = now - this.alternatingFieldStartedAt;
+
+      if (elapsed >= durationMs) {
+        this.alternatingField = this.alternatingField === 'artist' ? 'title' : 'artist';
+        this.alternatingFieldStartedAt = now;
+        this.alternatingScrollOffset = 0;
+        this.topRowDirty = true;
+      } else if (elapsed >= durationMs / 2) {
+        const text = utf82hex(
+          this.alternatingField === 'artist' ? this.lastZoneState.nowPlaying.artist : this.lastZoneState.nowPlaying.title,
+        );
+        const maxOffset = text.length - TOP_ROW_WIDTH;
+        if (maxOffset > 0 && this.alternatingScrollOffset < maxOffset) {
+          this.alternatingScrollOffset += SCROLL_STEP_CHARS;
+          this.topRowDirty = true;
+        }
+      }
     }
 
     if (this.topRowDirty) {
@@ -292,6 +364,7 @@ class RAD extends IbusDevice {
   private handleZoneUpdate(state: PlaybackZoneState): void {
     const enteringLoading = state.state === 'loading' && this.lastZoneState?.state !== 'loading';
     this.lastZoneState = state; // keep tracking even while disabled, so re-enable shows fresh content
+    this.updateNowPlayingScrollText(state.nowPlaying);
 
     if (!this.displayEnabled) return;
 
@@ -307,6 +380,44 @@ class RAD extends IbusDevice {
       this.topRowMode = state.nowPlaying ? 'now-playing' : 'blank';
       this.topRowDirty = true;
     }
+  }
+
+  // Rebuilds the "artist <sep> title" scroll buffer only when the content actually
+  // changed — an unrelated zone update (volume/state) must not reset scroll position
+  // mid-scroll, and switching away to the volume overlay and back should resume where
+  // it left off.
+  private updateNowPlayingScrollText(nowPlaying: NowPlaying | null): void {
+    if (!nowPlaying) {
+      this.nowPlayingScrollKey = '';
+      return;
+    }
+
+    const key = `${nowPlaying.artist}\0${nowPlaying.title}`;
+    if (key === this.nowPlayingScrollKey) return;
+
+    this.nowPlayingScrollKey = key;
+    this.nowPlayingScrollText = Buffer.concat([
+      utf82hex(nowPlaying.artist),
+      Buffer.from([0x20, 0xc3, 0x20]),
+      utf82hex(nowPlaying.title),
+    ]);
+    this.nowPlayingScrollOffset = 0;
+    this.nowPlayingScrollHoldUntil = Date.now() + SCROLL_HOLD_MS;
+    this.resetAlternatingState();
+  }
+
+  // Toggled by the /nowplaying-mode/:mode route via DisplayEvent.NowPlayingModeChanged.
+  private handleNowPlayingModeChange(mode: NowPlayingMode): void {
+    if (mode === this.nowPlayingMode) return;
+    this.nowPlayingMode = mode;
+    this.resetAlternatingState();
+    this.topRowDirty = true;
+  }
+
+  private resetAlternatingState(): void {
+    this.alternatingField = 'artist';
+    this.alternatingFieldStartedAt = Date.now();
+    this.alternatingScrollOffset = 0;
   }
 
   // Toggled by the /pixeltest/:state route via DisplayEvent.PixelTestToggled. While
@@ -382,26 +493,42 @@ class RAD extends IbusDevice {
     } else if (this.topRowMode === 'volume' && this.lastZoneState?.volume) {
       this.renderVolumeOverlay(this.volumeOverlayDst, this.lastZoneState.volume);
     } else if (this.topRowMode === 'now-playing' && this.lastZoneState?.nowPlaying) {
-      this.renderNowPlaying(this.lastZoneState.nowPlaying);
+      if (this.nowPlayingMode === 'alternating') {
+        this.renderNowPlayingAlternating();
+      } else if (this.nowPlayingScrollText.length > 0) {
+        this.renderNowPlayingScroll();
+      }
     } else {
       this.clearScreen();
     }
   }
 
-  // Full 32-char top row (11 + 21), both messages from a single source (RAD) —
-  // confirmed on hardware. Left field uses layout 0x00/flags 0x22; right field uses
-  // layout 0xe0/flags 0x80 ("Set cursor"), which continues from the left field
-  // instead of starting a new one, so the two together read as one uninterrupted line.
-  private renderPixelTestTopRows(): void {
-    const char = PIXEL_LEVELS[this.pixelTestLevel];
+  // Builds a full TOP_ROW_WIDTH-byte window into `text` starting at `offset` — right-padded
+  // with spaces if `text` is shorter than the row, otherwise a straight slice.
+  private buildTopRowWindow(text: Buffer, offset: number): Buffer {
+    if (text.length <= TOP_ROW_WIDTH) {
+      return Buffer.concat([text, Buffer.alloc(TOP_ROW_WIDTH - text.length, 0x20)]);
+    }
+    return text.subarray(offset, offset + TOP_ROW_WIDTH);
+  }
 
+  // Sends a full TOP_ROW_WIDTH-byte window as the confirmed-working two-message top-row
+  // write (11 + 21, both from RAD). Left field uses layout 0x00/flags 0x22; right field
+  // uses layout 0xe0/flags 0x80 ("Set cursor"), which continues from the left field
+  // instead of starting a new one, so the two together read as one uninterrupted line.
+  private sendTopRowWindow(window: Buffer, dstId: IbusDeviceId): void {
     let msg = Buffer.from([0x23, 0x00, 0x22]);
-    msg = Buffer.concat([msg, Buffer.alloc(11, char)]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+    msg = Buffer.concat([msg, window.subarray(0, TOP_LEFT_WIDTH)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
 
     msg = Buffer.from([0x23, 0xe0, 0x80]);
-    msg = Buffer.concat([msg, Buffer.alloc(21, char)]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+    msg = Buffer.concat([msg, window.subarray(TOP_LEFT_WIDTH, TOP_ROW_WIDTH)]);
+    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
+  }
+
+  private renderPixelTestTopRows(): void {
+    const char = PIXEL_LEVELS[this.pixelTestLevel];
+    this.sendTopRowWindow(Buffer.alloc(TOP_ROW_WIDTH, char), IbusDeviceId.MID);
   }
 
   private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {
@@ -415,28 +542,28 @@ class RAD extends IbusDevice {
     const displayValue = Math.round(volume.value).toString().padStart(3, ' ');
     const suffix = volume.type === 'db' ? 'dB' : '%';
 
-    let msg = Buffer.from([0x23, 0x00, 0x22]);
-    msg = Buffer.concat([msg, ascii2paddedHex(`Vol ${displayValue}${suffix}`, 11)]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
-
-    msg = Buffer.from([0x23, 0xe0, 0x80]);
-    msg = Buffer.concat([
-      msg,
+    const window = Buffer.concat([
+      ascii2paddedHex(`Vol ${displayValue}${suffix}`, TOP_LEFT_WIDTH),
       Buffer.from([0xc6, 0xc8, 0x20]),
       Buffer.from(volumeProgressBars[progressBarIndex]),
       Buffer.from(new Array(8).fill(0x20)),
     ]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, dstId, msg));
+    this.sendTopRowWindow(window, dstId);
   }
 
-  private renderNowPlaying(nowPlaying: NowPlaying): void {
-    let msg = Buffer.from([0x23, 0x00, 0x22]);
-    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.title, 11)]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+  // The single-string "artist <sep> title" scroll style.
+  private renderNowPlayingScroll(): void {
+    const window = this.buildTopRowWindow(this.nowPlayingScrollText, this.nowPlayingScrollOffset);
+    this.sendTopRowWindow(window, IbusDeviceId.MID);
+  }
 
-    msg = Buffer.from([0x23, 0xe0, 0x80]);
-    msg = Buffer.concat([msg, utf82paddedHex(nowPlaying.artist, 21)]);
-    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.MID, msg));
+  // The alternating artist/title style: shows one field at a time, static for the
+  // first half of its slot and scrolling (if too long) for the second half.
+  private renderNowPlayingAlternating(): void {
+    const nowPlaying = this.lastZoneState?.nowPlaying;
+    if (!nowPlaying) return;
+    const text = utf82hex(this.alternatingField === 'artist' ? nowPlaying.artist : nowPlaying.title);
+    this.sendTopRowWindow(this.buildTopRowWindow(text, this.alternatingScrollOffset), IbusDeviceId.MID);
   }
 
   private flushButtonRow(): void {

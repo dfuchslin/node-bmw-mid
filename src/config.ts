@@ -15,6 +15,8 @@ const configSchema = z
     ROON_ZONE_NAME: z.string(),
     ROON_EXTENSION_EMAIL: z.string().prefault('david'),
     ROON_PERSIST_PATH: z.string().prefault('./roon-config.json'),
+    MID_NOW_PLAYING_MODE: z.enum(['scroll', 'alternating']).prefault('scroll'),
+    MID_NOW_PLAYING_ALTERNATE_SECONDS: z.coerce.number().prefault(5),
   })
   .transform((val) => ({
     api: {
@@ -36,6 +38,10 @@ const configSchema = z
       zoneName: val.ROON_ZONE_NAME,
       extensionEmail: val.ROON_EXTENSION_EMAIL,
       persistPath: val.ROON_PERSIST_PATH,
+    },
+    mid: {
+      nowPlayingMode: val.MID_NOW_PLAYING_MODE,
+      nowPlayingAlternateSeconds: val.MID_NOW_PLAYING_ALTERNATE_SECONDS,
     },
   }));
 
