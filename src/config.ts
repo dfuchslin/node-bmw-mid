@@ -15,7 +15,7 @@ const configSchema = z
     ROON_ZONE_NAME: z.string(),
     ROON_EXTENSION_EMAIL: z.string().prefault('david'),
     ROON_PERSIST_PATH: z.string().prefault('./roon-config.json'),
-    MID_NOW_PLAYING_MODE: z.enum(['scroll', 'alternating']).prefault('scroll'),
+    MID_NOW_PLAYING_MODE: z.enum(['scroll', 'alternating']).prefault('alternating'),
     MID_NOW_PLAYING_ALTERNATE_SECONDS: z.coerce.number().prefault(5),
   })
   .transform((val) => ({
