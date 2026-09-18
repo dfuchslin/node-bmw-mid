@@ -2,6 +2,8 @@ import { ascii2paddedHex, buildMessage, utf82hex } from '../message.js';
 import {
   DisplayEvent,
   FullIbusMessage,
+  GPIO,
+  GPIOState,
   IbusDeviceId,
   NowPlaying,
   NowPlayingMode,
@@ -12,6 +14,7 @@ import {
   PlaybackZoneState,
 } from '../../types/index.js';
 import { IbusDevice, IbusDeviceConfig } from './IbusDevice.js';
+import gpio from '../../gpio/index.js';
 import { config as appConfig } from '../../config.js';
 
 // Menu-row button ids (msg[3] low nibble on a 0x31 broadcast, src:MID dst:RAD).
@@ -95,6 +98,11 @@ class RAD extends IbusDevice {
   private lastZoneState: PlaybackZoneState | undefined;
   private renderTick: ReturnType<typeof setInterval> | undefined;
 
+  // Mirrors the backlight: when the knob's power button turns the light off, all
+  // rendering suspends (and the display is blanked once); turning it back on forces
+  // a full refresh of whatever should currently be showing.
+  private displayEnabled = true;
+
   // Top row (text fields) desired state — a tick flushes this, not the handlers.
   private topRowMode: 'volume' | 'now-playing' | 'blank' | 'pixeltest' = 'blank';
   private topRowDirty = false;
@@ -143,6 +151,7 @@ class RAD extends IbusDevice {
     this.eventBus.on(PlaybackEvent.ZoneUpdated, (state: PlaybackZoneState) => this.handleZoneUpdate(state), {
       context: this.context,
     });
+    this.eventBus.on(GPIO.Light, (state: GPIOState) => this.handleLightChange(state), { context: this.context });
     this.eventBus.on(
       DisplayEvent.PixelTestToggled,
       ({ enabled }: PixelTestTogglePayload) => this.handlePixelTestToggle(enabled),
@@ -154,6 +163,13 @@ class RAD extends IbusDevice {
       { context: this.context },
     );
     this.renderTick = setInterval(() => this.tick(), RENDER_TICK_MS);
+
+    // Sync displayEnabled with the real backlight state at startup, rather than assuming
+    // it's on — read directly since this is a one-time boot query, not an ongoing signal.
+    gpio.isLightOn().then((isOn) => {
+      if (isOn === undefined) return; // GPIO not connected — keep the default (enabled)
+      this.handleLightChange(isOn ? GPIOState.On : GPIOState.Off);
+    });
   }
 
   term(): void {
@@ -176,11 +192,45 @@ class RAD extends IbusDevice {
     }
   }
 
+  // Backlight off -> blank the physical display once, then suspend the render loop
+  // entirely (handleVolume/handleZoneUpdate keep tracking state but stop marking
+  // anything dirty while disabled). Backlight on -> resume and force a full refresh.
+  private handleLightChange(state: GPIOState): void {
+    if (state === GPIOState.Off) {
+      if (!this.displayEnabled) return;
+      this.displayEnabled = false;
+      this.clearScreen();
+      this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+      this.buttonRowRight = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
+      this.clearButtonRow();
+      this.eventBus.emit(PlaybackEvent.PauseRequested, undefined, { context: this.context });
+      return;
+    }
+
+    if (state === GPIOState.On) {
+      if (this.displayEnabled) return;
+      this.displayEnabled = true;
+      if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
+        this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
+      }
+      this.topRowDirty = true;
+      if (this.pixelTestActive) {
+        // Backlight-off cleared the screen/button row — redraw the fill level
+        // instead of the real play/pause section.
+        this.applyPixelTestLevel();
+      } else {
+        this.updatePlayPauseSection();
+      }
+    }
+  }
+
   // The single render loop: on a fixed cadence, checks whether any time-based
   // transition (volume-overlay expiry, loading-symbol blink) is due, then flushes
   // whatever's dirty. No other method sends bytes directly — everything else just
   // updates desired state and marks it dirty.
   private tick(): void {
+    if (!this.displayEnabled) return;
+
     const now = Date.now();
 
     if (this.topRowMode === 'volume' && now >= this.volumeOverlayUntil) {
@@ -280,10 +330,12 @@ class RAD extends IbusDevice {
       this.lastZoneState = { ...this.lastZoneState, volume: nudged } as PlaybackZoneState;
     }
 
-    this.topRowMode = 'volume';
-    this.volumeOverlayDst = message.src;
-    this.volumeOverlayUntil = Date.now() + VOLUME_OVERLAY_MS;
-    this.topRowDirty = true;
+    if (this.displayEnabled) {
+      this.topRowMode = 'volume';
+      this.volumeOverlayDst = message.src;
+      this.volumeOverlayUntil = Date.now() + VOLUME_OVERLAY_MS;
+      this.topRowDirty = true;
+    }
   }
 
   private handleButtonPress(message: FullIbusMessage): void {
@@ -311,8 +363,10 @@ class RAD extends IbusDevice {
 
   private handleZoneUpdate(state: PlaybackZoneState): void {
     const enteringLoading = state.state === 'loading' && this.lastZoneState?.state !== 'loading';
-    this.lastZoneState = state;
+    this.lastZoneState = state; // keep tracking even while disabled, so re-enable shows fresh content
     this.updateNowPlayingScrollText(state.nowPlaying);
+
+    if (!this.displayEnabled) return;
 
     if (enteringLoading) {
       // Always start a fresh loading transition by showing the loading symbol immediately.
