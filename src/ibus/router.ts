@@ -71,7 +71,7 @@ const handleDeviceStatusResponse = (message: FullIbusMessage) => {
   log.debug('Got device status response from device', message);
 };
 
-const handleKnobButtonPress = (message: FullIbusMessage) => {
+const handleKnobButtonPress = (_message: FullIbusMessage) => {
   // Main power stays on always — the knob's power button toggles the light instead.
   log.notice('Knob button pressed — toggling light');
   gpio.emit(GPIO.Light, GPIOState.Toggle, { context });

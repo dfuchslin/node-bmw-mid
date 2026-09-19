@@ -7,7 +7,7 @@ export enum IbusDeviceId {
   AHL = 0x66, // Adaptive headlight unit
   ANZV = 0xe7, // Display group
   ASC = 0x56, // Anti-lock braking system with ASC
-  ASST = 0xca, // BMW Assist
+  ASST = 0xca, // BMW Assist / TCU (Telematics control unit) — upstream references list both names for this id
   BMBT = 0xf0, // On board monitor control panel
   CCM = 0x30, // Check control messages
   CDC = 0x18, // CD changer
@@ -64,7 +64,6 @@ export enum IbusDeviceId {
   SMAD = 0xda, // Seat memory assistant driver
   SOR = 0x74, // Seat occupancy recognition unit
   STH = 0x6b, // Standing heat
-  TCU = 0xca, // Telematics control unit
   TEL = 0xc8, // Telephone
   VID = 0xed, // Video input/TV tuner
 }

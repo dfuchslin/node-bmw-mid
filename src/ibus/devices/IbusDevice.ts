@@ -34,7 +34,7 @@ class CDCNEW extends IbusDevice {
     super(IbusDeviceId.CDC, config);
   }
 
-  init(ibusInterface: IbusInterface): void {
+  init(_ibusInterface: IbusInterface): void {
     this.log.notice('init CDCNEW');
     this.announce();
   }

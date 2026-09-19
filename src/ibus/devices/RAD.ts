@@ -47,7 +47,7 @@ const createProgressBars = (width: number) => {
   let i = 0;
   while (i < width) {
     [0xbf, 0xb0, 0xb1, 0xb9, 0xcf].forEach((char) => {
-      const row = new Array(width).fill(0x5f);
+      const row = Array.from({ length: width }, () => 0x5f);
       row[i] = char;
       result.push(row);
     });
@@ -550,7 +550,7 @@ class RAD extends IbusDevice {
       ascii2paddedHex(`Vol ${displayValue}${suffix}`, TOP_LEFT_WIDTH),
       Buffer.from([0xc6, 0xc8, 0x20]),
       Buffer.from(volumeProgressBars[progressBarIndex]),
-      Buffer.from(new Array(8).fill(0x20)),
+      Buffer.from(Array.from({ length: 8 }, () => 0x20)),
     ]);
     this.sendTopRowWindow(window, dstId);
   }

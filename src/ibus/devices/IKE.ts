@@ -5,11 +5,9 @@ import { Device, FullIbusMessage, IbusDeviceId } from '../../types/index.js';
 const id = IbusDeviceId.IKE;
 const context = IbusDeviceId[id].toLowerCase();
 const log = Logger.get(context);
-let ibusInterface: IbusInterface;
 
 const init = (_ibusInterface: IbusInterface) => {
   log.notice('init');
-  ibusInterface = _ibusInterface;
 };
 
 const term = () => {
