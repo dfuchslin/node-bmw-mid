@@ -252,7 +252,9 @@ class RAD extends IbusDevice {
     ) {
       const maxOffset = this.nowPlayingScrollText.length - TOP_ROW_WIDTH;
       this.nowPlayingScrollOffset =
-        this.nowPlayingScrollOffset >= maxOffset ? 0 : Math.min(this.nowPlayingScrollOffset + SCROLL_STEP_CHARS, maxOffset);
+        this.nowPlayingScrollOffset >= maxOffset
+          ? 0
+          : Math.min(this.nowPlayingScrollOffset + SCROLL_STEP_CHARS, maxOffset);
       this.nowPlayingScrollHoldUntil =
         this.nowPlayingScrollOffset === 0 || this.nowPlayingScrollOffset === maxOffset ? now + SCROLL_HOLD_MS : now;
       this.topRowDirty = true;
@@ -269,7 +271,9 @@ class RAD extends IbusDevice {
         this.topRowDirty = true;
       } else if (elapsed >= durationMs / 2) {
         const text = utf82hex(
-          this.alternatingField === 'artist' ? this.lastZoneState.nowPlaying.artist : this.lastZoneState.nowPlaying.title,
+          this.alternatingField === 'artist'
+            ? this.lastZoneState.nowPlaying.artist
+            : this.lastZoneState.nowPlaying.title,
         );
         const maxOffset = text.length - TOP_ROW_WIDTH;
         if (maxOffset > 0 && this.alternatingScrollOffset < maxOffset) {

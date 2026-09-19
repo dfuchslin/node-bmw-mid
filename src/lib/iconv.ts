@@ -3,19 +3,19 @@ import latinize from 'latinize';
 
 const unknown = '\xc3';
 const mapping: Record<string, string> = {
-  'ß': '\xa0',
-  'Ä': '\xa1',
-  'Ö': '\xa2',
-  'Ü': '\xa3',
-  'ä': '\xa4',
-  'ö': '\xa5',
-  'ü': '\xa6',
-  'Å': 'AA',
-  'Æ': 'AE',
-  'ø': 'oe',
-  'Ø': 'OE',
-  'å': 'aa',
-  'æ': 'ae',
+  ß: '\xa0',
+  Ä: '\xa1',
+  Ö: '\xa2',
+  Ü: '\xa3',
+  ä: '\xa4',
+  ö: '\xa5',
+  ü: '\xa6',
+  Å: 'AA',
+  Æ: 'AE',
+  ø: 'oe',
+  Ø: 'OE',
+  å: 'aa',
+  æ: 'ae',
 };
 
 const utf8_ibusascii = (text: string): string => {

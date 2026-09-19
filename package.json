@@ -9,7 +9,10 @@
     "start": "node dist/src/main.js",
     "dev": "LOG_LEVEL=debug tsx watch src/main.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "oxlint src test",
+    "format": "oxfmt src test",
+    "format:check": "oxfmt --check src test"
   },
   "engines": {
     "node": ">= 24"
@@ -20,7 +23,8 @@
     "@types/latinize": "^0.2.18",
     "@types/log": "^6.3.3",
     "@types/node": "^24",
-    "prettier": "^3.9.8",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.83.0",
     "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
