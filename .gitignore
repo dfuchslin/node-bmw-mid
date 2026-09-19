@@ -1,5 +1,7 @@
 .DS_Store
-.fleet
+.junie
+.claude
+.agents
 .idea
 .vscode
 .env
