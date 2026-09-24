@@ -81,6 +81,7 @@ const BLANK_BUTTON_HALF = Buffer.alloc(BUTTON_HALF_WIDTH, 0x20);
 const RENDER_TICK_MS = 200;
 const VOLUME_OVERLAY_MS = 5_000;
 const LOADING_BLINK_MS = 1_000;
+const DSP_PING_INTERVAL_MS = 3_000;
 
 // Joins 6 section halves (4 bytes each) with the 0x05 separator the MID expects
 // between segments in a batched menu-row write (verified against docs/MID.js's
@@ -97,6 +98,7 @@ const joinButtonRowHalves = (halves: Buffer[]): Buffer => {
 class RAD extends IbusDevice {
   private lastZoneState: PlaybackZoneState | undefined;
   private renderTick: ReturnType<typeof setInterval> | undefined;
+  private dspPingTick: ReturnType<typeof setInterval> | undefined;
 
   // Mirrors the backlight: when the knob's power button turns the light off, all
   // rendering suspends (and the display is blanked once); turning it back on forces
@@ -163,6 +165,7 @@ class RAD extends IbusDevice {
       { context: this.context },
     );
     this.renderTick = setInterval(() => this.tick(), RENDER_TICK_MS);
+    this.dspPingTick = setInterval(() => this.pingDsp(), DSP_PING_INTERVAL_MS);
 
     // Sync displayEnabled with the real backlight state at startup, rather than assuming
     // it's on — read directly since this is a one-time boot query, not an ongoing signal.
@@ -175,6 +178,7 @@ class RAD extends IbusDevice {
   term(): void {
     this.log.notice('term');
     if (this.renderTick) clearInterval(this.renderTick);
+    if (this.dspPingTick) clearInterval(this.dspPingTick);
   }
 
   parseMessage(message: FullIbusMessage): void {
@@ -583,6 +587,10 @@ class RAD extends IbusDevice {
 
     const right = Buffer.concat([Buffer.from([0x21, 0x00, 0x15, 0x06]), joinButtonRowHalves(sectionValues([3, 4, 5]))]);
     this.ibusInterface.sendMessage(buildMessage(IbusDeviceId.RAD, IbusDeviceId.MID, right));
+  }
+
+  private pingDsp(): void {
+    this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.DSP, [0x01]));
   }
 
   private clearScreen(): void {
