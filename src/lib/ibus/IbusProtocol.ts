@@ -63,7 +63,7 @@ export class IbusProtocol extends Transform {
       let mCrc;
 
       // look for messages in current chunk
-      for (let i = 0; i < cchunk.length - 5; i++) {
+      for (let i = 0; i <= cchunk.length - 5; i++) {
         // BEGIN MESSAGE
         mSrc = cchunk[i];
         mLen = cchunk[i + 1];
@@ -125,7 +125,7 @@ export class IbusProtocol extends Transform {
         if (this._buffer.length > 500) {
           // Chunk too big? (overflow protection)
           log.warning('[IbusProtocol] dropping some data..');
-          this._buffer = cchunk.subarray(chunk.length - 300);
+          this._buffer = cchunk.subarray(cchunk.length - 300);
         }
       }
     }
