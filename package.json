@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/src/main.js",
     "dev": "LOG_LEVEL=debug tsx watch src/main.ts",
+    "ibus-log": "tsx src/ibus-monitor.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint src test",
