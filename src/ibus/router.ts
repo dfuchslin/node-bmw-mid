@@ -7,6 +7,9 @@ import { deviceStatus } from '../ibus/message.js';
 import { EventBus } from '../eventbus/index.js';
 import cdcnew from '../ibus/devices/IbusDevice.js';
 import RadDevice from '../ibus/devices/RAD.js';
+import IkeDevice from '../ibus/devices/IKE.js';
+import LcmDevice from '../ibus/devices/LCM.js';
+import DspDevice from '../ibus/devices/DSP.js';
 import gpio from '../gpio/index.js';
 
 const context = 'ibus-router';
@@ -14,6 +17,8 @@ const log = Logger.get(context);
 let ibusInterface: IbusInterface;
 
 const registeredDevices: Record<number, Device> = {};
+// Devices that only we send as, so frames from them are echoes of our own writes
+const emulatedSources = new Set<IbusDeviceId>();
 //const registeredDevices: Record<number, Device> = {
 //  [CDC.id]: CDC,
 //  [IKE.id]: IKE,
@@ -34,6 +39,12 @@ const init = async (config: { ibusInterface: IbusInterface; eventBus: EventBus }
 
   const rad = new RadDevice(config);
   registeredDevices[rad.id] = rad;
+
+  // The car traffic the DSP-C needs before it starts, and the amp it talks to once it has
+  [new IkeDevice(config), new LcmDevice(config), new DspDevice(config)].forEach((device) => {
+    registeredDevices[device.id] = device;
+    emulatedSources.add(device.id);
+  });
 
   Object.values<Device>(registeredDevices).forEach((device) => device.init(config.ibusInterface));
 };
@@ -58,6 +69,10 @@ const routeMessage = (message: FullIbusMessage) => {
   const destination = registeredDevices[message.dst];
   if (destination) {
     return destination.parseMessage(message);
+  }
+
+  if (emulatedSources.has(message.src)) {
+    return;
   }
 
   log.error(`unhandled src:${IbusDeviceId[message.src]} dst:${IbusDeviceId[message.dst]} msg:`, message.msg);

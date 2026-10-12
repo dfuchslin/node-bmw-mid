@@ -1,5 +1,4 @@
-import { IbusDeviceId, IbusMessage } from '../../types/index.js';
-import { DSPC } from './dspc.js';
+import { IbusDeviceId, IbusMessage } from '../types/index.js';
 
 // Emulated DSP amplifier state, as reported to the DSP-C with `6A → EA 35`. On the bench the DSP-C sends
 // its button presses as `EA → 6A 34 xx` commands, retries them until the amp answers, and blanks its LCD
@@ -60,6 +59,6 @@ export class AmpState {
 
   status(): IbusMessage {
     const { echo, room, bands } = this.settings[this.mode];
-    return { src: IbusDeviceId.DSP, dst: DSPC, msg: Buffer.from([0x35, this.mode, echo, room, ...bands]) };
+    return { src: IbusDeviceId.DSP, dst: IbusDeviceId.DSPC, msg: Buffer.from([0x35, this.mode, echo, room, ...bands]) };
   }
 }

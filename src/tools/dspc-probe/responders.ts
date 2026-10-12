@@ -1,7 +1,7 @@
 import { IbusDeviceId, IbusMessage } from '../../types/index.js';
 import { FrameMatcher, matchesFrame, parseFrame } from '../frames.js';
 import { BridgeClient, BusFrame } from './bridge-client.js';
-import { AmpState } from './amp.js';
+import { AmpState } from '../../ibus/amp.js';
 import { DSPC } from './dspc.js';
 import { Recorder } from './recorder.js';
 

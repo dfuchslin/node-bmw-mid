@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { AmpState } from '../../src/tools/dspc-probe/amp.js';
+import { AmpState } from '../../src/ibus/amp.js';
 import { frameHex } from '../../src/tools/frames.js';
 
 const request = (...msg: number[]) => ({ src: 0xea, dst: 0x6a, msg: Buffer.from(msg) });

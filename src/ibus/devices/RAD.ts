@@ -83,6 +83,11 @@ const VOLUME_OVERLAY_MS = 5_000;
 const LOADING_BLINK_MS = 1_000;
 const DSP_PING_INTERVAL_MS = 3_000;
 
+// Radio-on block sent shortly after the light (ANT) comes on, after the amp's announce (see DSP.ts).
+const AUDIO_ON_DELAY_MS = 250;
+const AUDIO_ON_SETTINGS = [0xaf, 0x31, 0x6a, 0xc0, 0x80, 0x50, 0xe2, 0xa0];
+const AUDIO_ON_VOLUME = [0x21, 0x20];
+
 // Joins 6 section halves (4 bytes each) with the 0x05 separator the MID expects
 // between segments in a batched menu-row write (verified against docs/MID.js's
 // refresh_text(), which sends button_1..6 and button_7..12 this way).
@@ -214,6 +219,7 @@ class RAD extends IbusDevice {
     if (state === GPIOState.On) {
       if (this.displayEnabled) return;
       this.displayEnabled = true;
+      setTimeout(() => this.sendAudioOn(), AUDIO_ON_DELAY_MS);
       if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
         this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
       }
@@ -591,6 +597,17 @@ class RAD extends IbusDevice {
 
   private pingDsp(): void {
     this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.DSP, [0x01]));
+  }
+
+  // Audio settings and amp volume as the radio sends them when it switches on (real E38 capture). Part of the
+  // car traffic the DSP-C needs to start (confirmed on the bench; the minimum set is not known yet).
+  private sendAudioOn(): void {
+    AUDIO_ON_SETTINGS.forEach((setting) =>
+      this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.LOC, [0x36, setting])),
+    );
+    AUDIO_ON_VOLUME.forEach((volume) =>
+      this.ibusInterface.sendMessage(buildMessage(this.id, IbusDeviceId.DSP, [0x32, volume])),
+    );
   }
 
   private clearScreen(): void {
