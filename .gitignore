@@ -9,3 +9,4 @@ node_modules
 dist
 docs
 roon-config.json
+probe-logs

@@ -64,6 +64,10 @@ const routeMessage = (message: FullIbusMessage) => {
 };
 
 const handleDeviceStatusRequest = (message: FullIbusMessage) => {
+  // Only answer for devices we emulate — real devices on the bus answer for themselves.
+  if (!registeredDevices[message.dst]) {
+    return;
+  }
   ibusInterface.sendMessage(deviceStatus(message.dst));
 };
 

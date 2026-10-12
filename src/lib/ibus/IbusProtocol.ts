@@ -55,6 +55,8 @@ export class IbusProtocol extends Transform {
       const messages: FullIbusMessage[] = [];
 
       let endOfLastMessage = -1;
+      // start of bytes not yet accounted for by a valid message
+      let discardStart = 0;
 
       let mSrc;
       let mLen;
@@ -85,6 +87,14 @@ export class IbusProtocol extends Transform {
           }
 
           if (crc === mCrc) {
+            if (i > discardStart) {
+              log.warning(
+                '[IbusProtocol] Discarded %d bytes (no valid frame): %O',
+                i - discardStart,
+                cchunk.subarray(discardStart, i),
+              );
+            }
+
             messages.push({
               id: Date.now(),
               src: mSrc,
@@ -96,6 +106,7 @@ export class IbusProtocol extends Transform {
 
             // mark end of last message
             endOfLastMessage = i + 2 + mLen;
+            discardStart = endOfLastMessage;
 
             // skip ahead
             i = endOfLastMessage - 1;
@@ -124,7 +135,8 @@ export class IbusProtocol extends Transform {
         // Push the entire chunk
         if (this._buffer.length > 500) {
           // Chunk too big? (overflow protection)
-          log.warning('[IbusProtocol] dropping some data..');
+          const dropped = cchunk.subarray(0, cchunk.length - 300);
+          log.warning('[IbusProtocol] Buffer overflow, dropping %d bytes: %O', dropped.length, dropped);
           this._buffer = cchunk.subarray(cchunk.length - 300);
         }
       }

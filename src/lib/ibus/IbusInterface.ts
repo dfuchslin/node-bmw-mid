@@ -12,7 +12,10 @@ import { CustomEmitter, FullIbusMessage, IbusMessage, LogLevel } from '../../typ
 const context = 'ibus-bus';
 const log = Logger.get(context);
 
-export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
+// data: every valid frame parsed from the bus (including echoes of our own writes)
+// raw: every serial chunk as received, before framing
+// sent: every frame buffer once it has been handed to the serial port
+export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage; raw: Buffer; sent: Buffer }> {
   private readonly devicePath: string;
   private lastActivityTime: [number, number];
   private queue: Buffer[];
@@ -47,9 +50,10 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       }
     });
 
-    this.serialPort.on('data', (data: unknown) => {
+    this.serialPort.on('data', (data: Buffer) => {
       log.debug('[IbusInterface] Data: %O', data);
       this.lastActivityTime = process.hrtime();
+      this.emit('raw', data, { context });
     });
 
     this.serialPort.on('error', (err: unknown) => {
@@ -101,6 +105,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
         log.error('[IbusInterface] Failed to write: ' + error);
       } else {
         log.debug('[IbusInterface] Wrote to Device: %O', dataBuf);
+        this.emit('sent', dataBuf as Buffer, { context });
 
         this.serialPort?.drain(() => {
           log.debug('Data drained');
@@ -114,6 +119,10 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
       }
     };
     this.serialPort?.write(dataBuf, onSerialPortWrite);
+  }
+
+  getQueueLength(): number {
+    return this.queue.length;
   }
 
   getInterface() {
@@ -153,7 +162,7 @@ export class IbusInterface extends CustomEmitter<{ data: FullIbusMessage }> {
 
   sendMessage(msg: IbusMessage) {
     const dataBuf = createBufferFromIbusMessage(msg);
-    log.info(`[IbusInterface] Send message (queued:${this.queue.length})`, dataBuf);
+    // log.info(`[IbusInterface] Send message (queued:${this.queue.length})`, dataBuf);
 
     if (this.queue.length > 1000) {
       log.warning('[IbusInterface] Queue too large, dropping message..', dataBuf);

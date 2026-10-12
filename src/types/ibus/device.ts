@@ -50,6 +50,7 @@ export enum IbusDeviceId {
   NAVC = 0xa8, // Navigation China
   NAVE = 0x7f, // Navigation Europe
   NAVJ = 0xbb, // Navigation Japan
+  ONL = 0x67, // General module logical GATS/service interface
   PDC = 0x60, // Park distance control
   PIC = 0xf1, // Programmable controller (custom unit)
   RAD = 0x68, // Radio
