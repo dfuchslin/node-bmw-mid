@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { frameHex } from '../../src/tools/frames.js';
+import { frameHex } from '../../src/lib/ibus/frames.js';
 import {
   BLOCK_SIZE,
   blockStart,

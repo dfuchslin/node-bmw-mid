@@ -12,6 +12,9 @@ const configSchema = z
     GPIO_PINS_POWER: z.coerce.number().prefault(14),
     GPIO_PINS_LIGHT: z.coerce.number().prefault(15),
     IBUS_INTERFACE_PATH: z.string().prefault('/dev/ttyUSB0'),
+    // When set, talk to the ibus-bridge over TCP instead of opening IBUS_INTERFACE_PATH directly
+    IBUS_BRIDGE_HOST: z.string().optional(),
+    IBUS_BRIDGE_PORT: z.coerce.number().prefault(7700),
     ROON_ZONE_NAME: z.string(),
     ROON_EXTENSION_EMAIL: z.string().prefault('david'),
     ROON_PERSIST_PATH: z.string().prefault('./roon-config.json'),
@@ -32,6 +35,10 @@ const configSchema = z
     ibus: {
       interface: {
         path: val.IBUS_INTERFACE_PATH,
+      },
+      bridge: {
+        host: val.IBUS_BRIDGE_HOST,
+        port: val.IBUS_BRIDGE_PORT,
       },
     },
     roon: {

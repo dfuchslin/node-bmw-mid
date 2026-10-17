@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { frameHex, matchesFrame, parseFrame, toHex } from '../../src/tools/frames.js';
+import { frameHex, matchesFrame, parseFrame, toHex } from '../../../src/lib/ibus/frames.js';
 
 describe('parseFrame', () => {
   test('full frame is parsed and verified', () => {

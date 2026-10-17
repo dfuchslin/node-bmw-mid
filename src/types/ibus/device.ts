@@ -1,5 +1,5 @@
 import { FullIbusMessage } from '../index.js';
-import { IbusInterface } from '../../lib/ibus/index.js';
+import { IbusTransport } from '../../lib/ibus/index.js';
 
 /* from https://github.com/kmalinich/node-bmw-interface */
 export enum IbusDeviceId {
@@ -71,7 +71,7 @@ export enum IbusDeviceId {
 
 export interface Device {
   id: (typeof IbusDeviceId)[keyof typeof IbusDeviceId];
-  init(ibusInterface: IbusInterface): void;
+  init(ibusInterface: IbusTransport): void;
   term(): void;
   parseMessage(message: FullIbusMessage): void;
 }

@@ -1,16 +1,16 @@
-import { IbusInterface } from '../../lib/ibus/index.js';
+import { IbusTransport } from '../../lib/ibus/index.js';
 import { buildMessage } from '../../ibus/message.js';
 import Logger from '../../lib/log.js';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types/index.js';
 import { EventBus } from '../../eventbus/index.js';
 
-export type IbusDeviceConfig = { ibusInterface: IbusInterface; eventBus: EventBus };
+export type IbusDeviceConfig = { ibusInterface: IbusTransport; eventBus: EventBus };
 
 export abstract class IbusDevice implements Device {
   public readonly id: IbusDeviceId;
   protected readonly context: string;
   protected readonly log: typeof Logger;
-  protected readonly ibusInterface: IbusInterface;
+  protected readonly ibusInterface: IbusTransport;
   protected readonly eventBus: EventBus;
 
   constructor(id: IbusDeviceId, config: IbusDeviceConfig) {
@@ -22,7 +22,7 @@ export abstract class IbusDevice implements Device {
     this.log.notice('init');
   }
 
-  abstract init(ibusInterface: IbusInterface): void;
+  abstract init(ibusInterface: IbusTransport): void;
 
   abstract parseMessage(message: FullIbusMessage): void;
 
@@ -34,7 +34,7 @@ class CDCNEW extends IbusDevice {
     super(IbusDeviceId.CDC, config);
   }
 
-  init(_ibusInterface: IbusInterface): void {
+  init(_ibusInterface: IbusTransport): void {
     this.log.notice('init CDCNEW');
     this.announce();
   }

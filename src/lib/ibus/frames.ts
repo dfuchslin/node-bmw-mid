@@ -1,5 +1,5 @@
-import { createBufferFromIbusMessage } from '../lib/ibus/IbusProtocol.js';
-import { IbusMessage } from '../types/index.js';
+import { createBufferFromIbusMessage } from './IbusProtocol.js';
+import { IbusMessage } from '../../types/index.js';
 
 // Pure helpers for writing/reading I-Bus frames as hex text, shared by the bridge and the probe.
 

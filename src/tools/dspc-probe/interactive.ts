@@ -1,7 +1,7 @@
 import readline from 'node:readline';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { IbusDeviceId } from '../../types/index.js';
-import { parseFrame } from '../frames.js';
+import { parseFrame } from '../../lib/ibus/frames.js';
 import { BusFrame } from './bridge-client.js';
 import { KEEP_ALIVE_NAMES, KeepAliveName } from './keepalive.js';
 import { Probe } from './probe.js';

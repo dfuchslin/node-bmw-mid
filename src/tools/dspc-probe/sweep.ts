@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { IbusDeviceId, IbusMessage } from '../../types/index.js';
-import { frameHex, toHex } from '../frames.js';
+import { frameHex, toHex } from '../../lib/ibus/frames.js';
 import { BusFrame } from './bridge-client.js';
 import { DSPC, isKnownDspcFrame, isResetAnnounce } from './dspc.js';
 import { Probe } from './probe.js';

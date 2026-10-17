@@ -1,5 +1,5 @@
 import Logger from '../lib/log.js';
-import { IbusInterface } from '../lib/ibus/index.js';
+import { IbusTransport } from '../lib/ibus/index.js';
 import { Device, FullIbusMessage, GPIO, GPIOState, IbusDeviceId } from '../types/index.js';
 //import { CDC, IKE, MID, RAD, TEL } from '../ibus/devices';
 import * as AllDevices from '../ibus/devices/index.js';
@@ -14,7 +14,7 @@ import gpio from '../gpio/index.js';
 
 const context = 'ibus-router';
 const log = Logger.get(context);
-let ibusInterface: IbusInterface;
+let ibusInterface: IbusTransport;
 
 const registeredDevices: Record<number, Device> = {};
 // Devices that only we send as, so frames from them are echoes of our own writes
@@ -27,7 +27,7 @@ const emulatedSources = new Set<IbusDeviceId>();
 //  [TEL.id]: TEL,
 //};
 
-const init = async (config: { ibusInterface: IbusInterface; eventBus: EventBus }) => {
+const init = async (config: { ibusInterface: IbusTransport; eventBus: EventBus }) => {
   ibusInterface = config.ibusInterface;
   ibusInterface.on('data', routeMessage, { context });
   log.notice('Initialized ibus message router');

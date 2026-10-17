@@ -1,5 +1,5 @@
 import { IbusMessage } from '../../types/index.js';
-import { parseFrame } from '../frames.js';
+import { parseFrame } from '../../lib/ibus/frames.js';
 import { BridgeClient } from './bridge-client.js';
 import { Recorder } from './recorder.js';
 

@@ -2,7 +2,7 @@ import net from 'node:net';
 import readline from 'node:readline';
 import Logger from '../../lib/log.js';
 import { CustomEmitter, IbusMessage, LogLevel } from '../../types/index.js';
-import { frameHex, parseFrame } from '../frames.js';
+import { frameHex, parseFrame } from '../../lib/ibus/frames.js';
 
 const context = 'bridge-client';
 const log = Logger.get(context);

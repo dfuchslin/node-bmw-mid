@@ -6,3 +6,5 @@ Also rudimentary conversion to typescript
 
 export * from './IbusInterface.js';
 export * from './IbusProtocol.js';
+export * from './IbusBridgeClient.js';
+export * from './IbusTransport.js';

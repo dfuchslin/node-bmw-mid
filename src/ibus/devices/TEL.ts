@@ -1,4 +1,4 @@
-import { IbusInterface } from '../../lib/ibus/index.js';
+import { IbusTransport } from '../../lib/ibus/index.js';
 import Logger from '../../lib/log.js';
 import { Device, FullIbusMessage, IbusDeviceId } from '../../types/index.js';
 
@@ -6,7 +6,7 @@ const id = IbusDeviceId.TEL;
 const context = IbusDeviceId[id].toLowerCase();
 const log = Logger.get(context);
 
-const init = (_ibusInterface: IbusInterface) => {
+const init = (_ibusInterface: IbusTransport) => {
   log.notice('init');
 };
 

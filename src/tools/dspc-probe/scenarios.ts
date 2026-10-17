@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { IbusMessage } from '../../types/index.js';
-import { parseFrame } from '../frames.js';
+import { parseFrame } from '../../lib/ibus/frames.js';
 import { CAR_KEEP_ALIVE, KeepAliveName } from './keepalive.js';
 import { Probe } from './probe.js';
 import { formatSummary, RunSummary } from './recorder.js';
