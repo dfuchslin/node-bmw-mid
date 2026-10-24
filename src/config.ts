@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { z } from 'zod';
 
 const configSchema = z
@@ -52,5 +51,4 @@ const configSchema = z
     },
   }));
 
-dotenv.config();
 export const config = configSchema.parse(process.env);

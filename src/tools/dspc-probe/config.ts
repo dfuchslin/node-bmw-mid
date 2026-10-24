@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { z } from 'zod';
 
 // The probe runs on a workstation and reaches the Pi over the network: the I-Bus through ibus-bridge,
@@ -18,5 +17,4 @@ const probeConfigSchema = z
     gpio: { host: val.GPIO_HOST, pins: { power: val.GPIO_PINS_POWER, ant: val.PROBE_GPIO_PIN_ANT } },
   }));
 
-dotenv.config({ quiet: true });
 export const probeConfig = probeConfigSchema.parse(process.env);
