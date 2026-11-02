@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { ascii2hex, ascii2paddedHex } from '../../src/ibus/message.js';
+import { ascii2hex, ascii2paddedHex, wrapCharTestCode } from '../../src/ibus/message.js';
 
 const codepoints = Array.from(Array(96 + 32).keys())
   .slice(32)
@@ -34,5 +34,19 @@ describe('ascii2paddedhex', () => {
   test('ascii text does not need to be padded if text length is the same as the desired length', () => {
     const result = ascii2paddedHex('Hello', 5);
     expect(result).toStrictEqual(Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]));
+  });
+});
+
+describe('wrapCharTestCode', () => {
+  test('steps forward and backward by the given steps', () => {
+    expect(wrapCharTestCode(0x41, 1)).toBe(0x42);
+    expect(wrapCharTestCode(0x41, -1)).toBe(0x40);
+    expect(wrapCharTestCode(0x41, 3)).toBe(0x44);
+  });
+  test('wraps around at both ends of the range', () => {
+    expect(wrapCharTestCode(0xff, 1)).toBe(0x20);
+    expect(wrapCharTestCode(0x20, -1)).toBe(0xff);
+    expect(wrapCharTestCode(0xfe, 4)).toBe(0x22);
+    expect(wrapCharTestCode(0x21, -3)).toBe(0xfe);
   });
 });

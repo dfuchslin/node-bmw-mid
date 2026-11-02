@@ -1,5 +1,6 @@
-import { ascii2paddedHex, buildMessage, utf82hex } from '../message.js';
+import { ascii2paddedHex, buildMessage, CHAR_TEST_FIRST, utf82hex, wrapCharTestCode } from '../message.js';
 import {
+  CharTestTogglePayload,
   DisplayEvent,
   FullIbusMessage,
   GPIO,
@@ -111,15 +112,17 @@ class RAD extends IbusDevice {
   private displayEnabled = true;
 
   // Top row (text fields) desired state — a tick flushes this, not the handlers.
-  private topRowMode: 'volume' | 'now-playing' | 'blank' | 'pixeltest' = 'blank';
+  private topRowMode: 'volume' | 'now-playing' | 'blank' | 'pixeltest' | 'chartest' = 'blank';
   private topRowDirty = false;
   private volumeOverlayDst: IbusDeviceId = IbusDeviceId.MID;
   private volumeOverlayUntil = 0;
 
-  // Pixel test mode: while active, the knob sweeps a fill level across the whole
-  // display instead of changing real volume (see handleVolume/adjustPixelTestLevel).
-  private pixelTestActive = false;
+  // Diagnostic test modes (mutually exclusive): while one is active, the knob drives it
+  // instead of changing real volume (see handleVolume). Pixel test sweeps a fill level
+  // across the whole display; char test steps through every code point, one per detent.
+  private testMode: 'pixeltest' | 'chartest' | undefined;
   private pixelTestLevel = PIXEL_LEVELS.length - 1;
+  private charTestCode = CHAR_TEST_FIRST;
 
   // Which now-playing display style is active — set from config at startup, and
   // switchable live via the /nowplaying-mode/:mode route (DisplayEvent.NowPlayingModeChanged).
@@ -162,6 +165,11 @@ class RAD extends IbusDevice {
     this.eventBus.on(
       DisplayEvent.PixelTestToggled,
       ({ enabled }: PixelTestTogglePayload) => this.handlePixelTestToggle(enabled),
+      { context: this.context },
+    );
+    this.eventBus.on(
+      DisplayEvent.CharTestToggled,
+      ({ enabled }: CharTestTogglePayload) => this.handleCharTestToggle(enabled),
       { context: this.context },
     );
     this.eventBus.on(
@@ -220,14 +228,16 @@ class RAD extends IbusDevice {
       if (this.displayEnabled) return;
       this.displayEnabled = true;
       setTimeout(() => this.sendAudioOn(), AUDIO_ON_DELAY_MS);
-      if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
+      if (this.topRowMode !== 'volume' && !this.testMode) {
         this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
       }
       this.topRowDirty = true;
-      if (this.pixelTestActive) {
-        // Backlight-off cleared the screen/button row — redraw the fill level
-        // instead of the real play/pause section.
+      // Backlight-off cleared the screen/button row — redraw the active test mode
+      // instead of the real play/pause section.
+      if (this.testMode === 'pixeltest') {
         this.applyPixelTestLevel();
+      } else if (this.testMode === 'chartest') {
+        this.applyCharTest();
       } else {
         this.updatePlayPauseSection();
       }
@@ -324,8 +334,12 @@ class RAD extends IbusDevice {
     const volume_inc = Math.floor(volume / 0x10);
     const steps = direction === '+' ? volume_inc : -volume_inc;
 
-    if (this.pixelTestActive) {
+    if (this.testMode === 'pixeltest') {
       this.adjustPixelTestLevel(steps);
+      return;
+    }
+    if (this.testMode === 'chartest') {
+      this.adjustCharTestCode(steps);
       return;
     }
 
@@ -389,7 +403,7 @@ class RAD extends IbusDevice {
     }
     this.updatePlayPauseSection();
 
-    if (this.topRowMode !== 'volume' && !this.pixelTestActive) {
+    if (this.topRowMode !== 'volume' && !this.testMode) {
       // display-only: do NOT emit PlaybackEvent.VolumeChangeRequested from here
       this.topRowMode = state.nowPlaying ? 'now-playing' : 'blank';
       this.topRowDirty = true;
@@ -438,19 +452,41 @@ class RAD extends IbusDevice {
   // active, handleVolume() diverts the knob to adjustPixelTestLevel() instead of
   // requesting a real volume change, so lastZoneState.volume is never touched here —
   // the real volume is implicitly "restored" on exit simply because it was never
-  // changed in the first place.
+  // changed in the first place. Enabling it takes over from an active char test.
   private handlePixelTestToggle(enabled: boolean): void {
     if (enabled) {
-      if (this.pixelTestActive) return;
-      this.pixelTestActive = true;
+      if (this.testMode === 'pixeltest') return;
+      this.testMode = 'pixeltest';
       this.pixelTestLevel = PIXEL_LEVELS.length - 1; // start fully filled (0xb2)
       this.topRowMode = 'pixeltest';
       this.applyPixelTestLevel();
       return;
     }
 
-    if (!this.pixelTestActive) return;
-    this.pixelTestActive = false;
+    if (this.testMode !== 'pixeltest') return;
+    this.exitTestMode();
+  }
+
+  // Toggled by the /chartest/:state route via DisplayEvent.CharTestToggled — the knob
+  // steps through every code point (see adjustCharTestCode), the same way the original
+  // hello world mapped the MID charset (midpixels). Same volume-diversion semantics as
+  // the pixel test; enabling it takes over from an active pixel test.
+  private handleCharTestToggle(enabled: boolean): void {
+    if (enabled) {
+      if (this.testMode === 'chartest') return;
+      this.testMode = 'chartest';
+      this.charTestCode = CHAR_TEST_FIRST;
+      this.topRowMode = 'chartest';
+      this.applyCharTest();
+      return;
+    }
+
+    if (this.testMode !== 'chartest') return;
+    this.exitTestMode();
+  }
+
+  private exitTestMode(): void {
+    this.testMode = undefined;
     this.topRowMode = this.lastZoneState?.nowPlaying ? 'now-playing' : 'blank';
     this.topRowDirty = true;
     this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => BLANK_BUTTON_HALF);
@@ -465,6 +501,22 @@ class RAD extends IbusDevice {
     if (next > PIXEL_LEVELS.length - 1) next = PIXEL_LEVELS.length - 1;
     this.pixelTestLevel = next;
     this.applyPixelTestLevel();
+  }
+
+  private adjustCharTestCode(steps: number): void {
+    this.charTestCode = wrapCharTestCode(this.charTestCode, steps);
+    this.log.notice('chartest 0x%s (%d)', this.charTestCode.toString(16), this.charTestCode);
+    this.applyCharTest();
+  }
+
+  // Fills the button row with the current char-test code point and marks everything
+  // dirty; the top row is labelled with the code point (see renderCharTestTopRows).
+  private applyCharTest(): void {
+    const half = Buffer.alloc(BUTTON_HALF_WIDTH, this.charTestCode);
+    this.buttonRowLeft = Array.from({ length: BUTTON_ROW_SECTIONS }, () => half);
+    this.buttonRowRight = Array.from({ length: BUTTON_ROW_SECTIONS }, () => half);
+    this.buttonRowDirty = true;
+    this.topRowDirty = true;
   }
 
   // Fills the whole display (top rows + button row) with the current pixel-test
@@ -504,6 +556,8 @@ class RAD extends IbusDevice {
   private flushTopRow(): void {
     if (this.topRowMode === 'pixeltest') {
       this.renderPixelTestTopRows();
+    } else if (this.topRowMode === 'chartest') {
+      this.renderCharTestTopRows();
     } else if (this.topRowMode === 'volume' && this.lastZoneState?.volume) {
       this.renderVolumeOverlay(this.volumeOverlayDst, this.lastZoneState.volume);
     } else if (this.topRowMode === 'now-playing' && this.lastZoneState?.nowPlaying) {
@@ -543,6 +597,14 @@ class RAD extends IbusDevice {
   private renderPixelTestTopRows(): void {
     const char = PIXEL_LEVELS[this.pixelTestLevel];
     this.sendTopRowWindow(Buffer.alloc(TOP_ROW_WIDTH, char), IbusDeviceId.MID);
+  }
+
+  // Left field labels the code point (e.g. "178 0xB2"), right field shows the glyph itself.
+  private renderCharTestTopRows(): void {
+    const code = this.charTestCode;
+    const label = `${code} 0x${code.toString(16).toUpperCase().padStart(2, '0')}`;
+    const window = Buffer.concat([ascii2paddedHex(label, TOP_LEFT_WIDTH), Buffer.alloc(TOP_RIGHT_WIDTH, code)]);
+    this.sendTopRowWindow(window, IbusDeviceId.MID);
   }
 
   private renderVolumeOverlay(dstId: IbusDeviceId, volume: PlaybackVolume): void {

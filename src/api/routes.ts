@@ -70,6 +70,21 @@ router.post('/pixeltest/:state', (c) => {
   return c.text('updated');
 });
 
+router.post('/chartest/:state', (c) => {
+  const { state } = c.req.param();
+  switch (state) {
+    case 'on':
+      sharedEventBus?.emit(DisplayEvent.CharTestToggled, { enabled: true }, { context });
+      break;
+    case 'off':
+      sharedEventBus?.emit(DisplayEvent.CharTestToggled, { enabled: false }, { context });
+      break;
+    default:
+      break;
+  }
+  return c.text('updated');
+});
+
 router.post('/nowplaying-mode/:mode', (c) => {
   const { mode } = c.req.param();
   if (mode === 'scroll' || mode === 'alternating') {

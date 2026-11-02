@@ -43,3 +43,14 @@ export const ascii2paddedHex = (text: string, length: number): Buffer => {
   const padding = Buffer.alloc(length - text.length, 0x20);
   return Buffer.concat([unpadded, padding]);
 };
+
+// Code-point range the char test (/chartest/:state) scrolls through. Bytes below 0x20
+// are control-ish on the MID (e.g. 0x05 is the button-row separator), so they're skipped.
+export const CHAR_TEST_FIRST = 0x20;
+export const CHAR_TEST_LAST = 0xff;
+
+// Steps `code` by `steps` within CHAR_TEST_FIRST..CHAR_TEST_LAST, wrapping at both ends.
+export const wrapCharTestCode = (code: number, steps: number): number => {
+  const span = CHAR_TEST_LAST - CHAR_TEST_FIRST + 1;
+  return CHAR_TEST_FIRST + ((((code - CHAR_TEST_FIRST + steps) % span) + span) % span);
+};
